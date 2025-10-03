@@ -109,7 +109,11 @@ if st.button("生成词云图", type="primary"):
         import os
         
         # 尝试多种字体路径
-        font_paths ='C:/Windows/Fonts/simhei.ttf'  # 黑体字体
+        font_paths =[
+            'C:/Windows/Fonts/simhei.ttf',  # 黑体字体
+            'C:/Windows/Fonts/msyh.ttf',   #微软雅黑
+            None
+        ]
         
         selected_font_path = None
         for font_path in font_paths:
@@ -221,4 +225,5 @@ if st.button("生成词云图", type="primary"):
 
 if __name__ == "__main__":
     main()
+
 
