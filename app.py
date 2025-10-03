@@ -30,76 +30,6 @@ def get_best_font():
     except:
         return None
 
-def create_bubble_chart(word_freq, max_words=50, title="词云图"):
-    """创建气泡图替代词云 - 加大版本"""
-    try:
-        # 获取前N个词汇
-        top_words = word_freq.most_common(max_words)
-        if not top_words:
-            return None
-            
-        words = [word for word, count in top_words]
-        counts = [count for word, count in top_words]
-        
-        # 创建气泡图
-        fig = go.Figure()
-        
-        # 计算气泡大小 - 加大尺寸
-        max_count = max(counts)
-        min_count = min(counts)
-        sizes = [20 + 80 * (count - min_count) / (max_count - min_count) for count in counts]  # 加大尺寸范围
-        
-        # 生成随机位置（避免重叠）
-        np.random.seed(42)
-        x_pos = np.random.rand(len(words))
-        y_pos = np.random.rand(len(words))
-        
-        # 添加气泡
-        fig.add_trace(go.Scatter(
-            x=x_pos,
-            y=y_pos,
-            mode='text+markers',
-            text=words,
-            textposition="middle center",
-            textfont=dict(
-                size=[size/1.5 for size in sizes],  # 加大文字大小
-                color='white',
-                family="SimHei, Microsoft YaHei, sans-serif"  # 确保中文字体
-            ),
-            marker=dict(
-                size=sizes,  # 使用计算的大小
-                color=counts,
-                colorscale='Viridis',
-                opacity=0.8,  # 提高不透明度
-                line=dict(width=3, color='white')  # 加粗边框
-            ),
-            hovertemplate=
-            "<b>%{text}</b><br>" +
-            "出现次数: %{marker.color}<br>" +
-            "<extra></extra>"
-        ))
-        
-        fig.update_layout(
-            title=dict(
-                text=title,
-                x=0.5,
-                font=dict(size=24, family="SimHei, Microsoft YaHei")  # 加大标题字体
-            ),
-            showlegend=False,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.1, 1.1]),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.1, 1.1]),
-            plot_bgcolor='white',
-            height=700,  # 增加高度
-            width=1000,   # 增加宽度
-            margin=dict(l=20, r=20, t=80, b=20)
-        )
-        
-        return fig
-        
-    except Exception as e:
-        st.error(f"气泡图创建失败: {e}")
-        return None
-
 def create_text_cloud_matplotlib(word_freq, max_words=50, colormap='viridis', background_color='white'):
     """使用matplotlib创建文本云"""
     try:
@@ -709,5 +639,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
