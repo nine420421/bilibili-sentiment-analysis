@@ -482,15 +482,9 @@ def main():
 
                     # 根据选择的方案生成图表
                     title_suffix = f"{sentiment_option} - "
-                    
-                    if viz_option == "气泡图":
-                        fig = create_bubble_chart(
-                            word_freq, 
-                            max_words=max_words,
-                            title=title_suffix + '词汇气泡图'
-                        )
+                
                         
-                    elif viz_option == "高级条形图":
+                    if viz_option == "高级条形图":
                         fig = create_advanced_bar_chart(
                             word_freq,
                             title=title_suffix + '高频词汇图'
@@ -637,6 +631,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
