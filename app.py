@@ -8,10 +8,42 @@ from collections import Counter
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import os
+import platform
 
 # 设置中文字体支持
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
+
+def get_font_path():
+    """获取可用的中文字体路径"""
+    system = platform.system()
+    
+    if system == "Windows":
+        possible_paths = [
+            "C:/Windows/Fonts/simhei.ttf",
+            "C:/Windows/Fonts/msyh.ttc",
+            "C:/Windows/Fonts/simsun.ttc"
+        ]
+    elif system == "Darwin":  # macOS
+        possible_paths = [
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/Library/Fonts/Arial Unicode.ttf"
+        ]
+    else:  # Linux 和其他系统
+        possible_paths = [
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+        ]
+    
+    # 检查字体文件是否存在
+    for font_path in possible_paths:
+        if os.path.exists(font_path):
+            return font_path
+    
+    return None
 
 # 设置页面
 st.set_page_config(
@@ -303,4 +335,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
