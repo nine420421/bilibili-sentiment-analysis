@@ -209,7 +209,7 @@ def create_advanced_bar_chart(word_freq, title="高频词汇云图"):
         return None
 
 def create_word_importance_chart(word_freq, title="词汇重要性分布"):
-    """创建词汇重要性图表"""
+    """创建词汇重要性图表 - 修复版本"""
     try:
         top_words = word_freq.most_common(25)
         
@@ -222,8 +222,11 @@ def create_word_importance_chart(word_freq, title="词汇重要性分布"):
         # 创建散点图显示词汇重要性
         fig = go.Figure()
         
+        # 修复：使用列表而不是range对象
+        x_values = list(range(len(words)))
+        
         fig.add_trace(go.Scatter(
-            x=range(len(words)),
+            x=x_values,  # 修复：使用列表
             y=counts,
             mode='markers+text',
             text=words,
@@ -263,6 +266,105 @@ def create_word_importance_chart(word_freq, title="词汇重要性分布"):
         
     except Exception as e:
         st.error(f"词汇重要性图表失败: {e}")
+        return None
+
+def create_word_frequency_heatmap(word_freq, title="词汇频率热力图"):
+    """创建词汇频率热力图"""
+    try:
+        top_words = word_freq.most_common(20)
+        
+        if not top_words:
+            return None
+            
+        words = [word for word, _ in top_words]
+        counts = [count for _, count in top_words]
+        
+        # 创建热力图样式的条形图
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            x=words,
+            y=counts,
+            marker=dict(
+                color=counts,
+                colorscale='Hot',
+                line=dict(color='white', width=1)
+            ),
+            text=counts,
+            textposition='auto',
+            hovertemplate='<b>%{x}</b><br>出现次数: %{y}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=20)
+            ),
+            xaxis_title="词汇",
+            yaxis_title="出现次数",
+            showlegend=False,
+            height=500,
+            xaxis={'tickangle': 45}
+        )
+        
+        return fig
+        
+    except Exception as e:
+        st.error(f"热力图创建失败: {e}")
+        return None
+
+def create_word_network_chart(word_freq, title="词汇网络图"):
+    """创建词汇网络图"""
+    try:
+        top_words = word_freq.most_common(15)
+        
+        if not top_words:
+            return None
+            
+        words = [word for word, _ in top_words]
+        counts = [count for _, count in top_words]
+        
+        # 创建极坐标图
+        fig = go.Figure()
+        
+        # 计算角度
+        angles = np.linspace(0, 2*np.pi, len(words), endpoint=False).tolist()
+        
+        fig.add_trace(go.Scatterpolar(
+            r=counts,
+            theta=words,
+            fill='toself',
+            line=dict(color='blue'),
+            marker=dict(
+                size=[count/3 for count in counts],
+                color=counts,
+                colorscale='Viridis'
+            ),
+            text=counts,
+            hovertemplate='<b>%{theta}</b><br>出现次数: %{r}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=20)
+            ),
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, max(counts)]
+                )
+            ),
+            showlegend=False,
+            height=500
+        )
+        
+        return fig
+        
+    except Exception as e:
+        st.error(f"网络图创建失败: {e}")
         return None
 
 def get_words_from_segmented(segmented_str):
@@ -392,7 +494,7 @@ def main():
                 st.plotly_chart(fig_count, use_container_width=True)
 
         # 词云分析 - 使用替代方案
-        st.header("☁️ 词云分析（替代方案）")
+        st.header("☁️ 词汇可视化分析")
 
         # 情感选择
         sentiment_option = st.selectbox(
@@ -404,12 +506,12 @@ def main():
         # 可视化方案选择
         viz_option = st.selectbox(
             "选择可视化方案:",
-            ["气泡图", "文本云", "高级条形图", "词汇重要性图"],
+            ["气泡图", "高级条形图", "词汇重要性图", "频率热力图", "网络图"],
             help="选择不同的方式来可视化词汇分布"
         )
 
         # 词汇数量设置
-        max_words = st.slider("显示词汇数量", 20, 100, 50, key="max_words_slider")
+        max_words = st.slider("显示词汇数量", 10, 50, 25, key="max_words_slider")
 
         # 生成图表
         if st.button("生成可视化", type="primary", key="generate_viz"):
@@ -447,39 +549,44 @@ def main():
                     st.info(f"📊 前10个高频词: {top_words_str}")
 
                     # 根据选择的方案生成图表
+                    title_suffix = f"{sentiment_option} - "
+                    
                     if viz_option == "气泡图":
                         fig = create_bubble_chart(
                             word_freq, 
                             max_words=max_words,
-                            title=f'{sentiment_option} - 词汇气泡图'
+                            title=title_suffix + '词汇气泡图'
                         )
-                        if fig:
-                            st.plotly_chart(fig, use_container_width=True)
-                            
-                    elif viz_option == "文本云":
-                        fig = create_text_cloud_matplotlib(
-                            word_freq,
-                            max_words=max_words
-                        )
-                        if fig:
-                            st.pyplot(fig)
-                            plt.close(fig)
-                            
+                        
                     elif viz_option == "高级条形图":
                         fig = create_advanced_bar_chart(
                             word_freq,
-                            title=f'{sentiment_option} - 高频词汇云图'
+                            title=title_suffix + '高频词汇图'
                         )
-                        if fig:
-                            st.plotly_chart(fig, use_container_width=True)
-                            
+                        
                     elif viz_option == "词汇重要性图":
                         fig = create_word_importance_chart(
                             word_freq,
-                            title=f'{sentiment_option} - 词汇重要性分布'
+                            title=title_suffix + '词汇重要性分布'
                         )
-                        if fig:
-                            st.plotly_chart(fig, use_container_width=True)
+                        
+                    elif viz_option == "频率热力图":
+                        fig = create_word_frequency_heatmap(
+                            word_freq,
+                            title=title_suffix + '词汇频率热力图'
+                        )
+                        
+                    elif viz_option == "网络图":
+                        fig = create_word_network_chart(
+                            word_freq,
+                            title=title_suffix + '词汇网络图'
+                        )
+
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.success("🎉 可视化生成成功！")
+                    else:
+                        st.error("❌ 可视化生成失败")
 
                     # 显示高频词表格
                     st.subheader("📋 高频词汇TOP20")
@@ -600,3 +707,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
