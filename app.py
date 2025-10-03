@@ -11,10 +11,6 @@ import base64
 import io
 import os
 
-# 设置中文字体支持
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
-
 # 设置页面
 st.set_page_config(
     page_title="B站评论情感分析系统",
@@ -177,4 +173,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
