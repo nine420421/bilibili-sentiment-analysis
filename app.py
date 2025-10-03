@@ -98,79 +98,198 @@ def main():
             st.plotly_chart(fig_hist, use_container_width=True)
 
    # 词云生成
-st.header("☁️ 词云分析")
+# 设置中文字体支持
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False
 
-if st.button("生成词云图", type="primary"):
-    with st.spinner("正在生成词云..."):
-        # 准备文本数据
-        all_text = ' '.join(df['content_cleaned'].astype(str))
-        
-        # 字体路径处理
-        import os
-        
-        # 尝试多种字体路径
-        font_paths = [
-            './fonts/SimHei.ttf',           # 项目字体文件夹
-            './fonts/msyh.ttf',             # 微软雅黑
-            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux系统字体
-            None  # 最后尝试不使用字体
-        ]
-        
-        selected_font_path = None
-        for font_path in font_paths:
-            if font_path is None:
-                selected_font_path = None
-                break
-            try:
-                if os.path.exists(font_path):
-                    selected_font_path = font_path
-                    st.success(f"使用字体: {font_path}")
-                    break
-            except:
-                continue
-        
-        if selected_font_path is None:
-            st.warning("⚠️ 未找到中文字体文件，词云可能无法正确显示中文")
-        
-        # 生成词云
-        try:
-            wordcloud = WordCloud(
-                width=800, 
-                height=400,
-                background_color='white',
-                max_words=100,
-                colormap='viridis',
-                font_path=selected_font_path,  # 使用找到的字体路径
-                stopwords=None,  # 可以添加中文停用词
-                collocations=False  # 避免重复词语
-            ).generate(all_text)
-            
-            # 显示词云
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis('off')
-            ax.set_title('评论词云图', fontsize=16)
-            st.pyplot(fig)
-            
-        except Exception as e:
-            st.error(f"❌ 生成词云时出错: {str(e)}")
-            st.info("尝试使用默认设置重新生成...")
-            
-            # 备用方案：不使用字体
-            wordcloud = WordCloud(
-                width=800, 
-                height=400,
-                background_color='white',
-                max_words=100,
-                colormap='viridis',
-                font_path=None
-            ).generate(all_text)
-            
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis('off')
-            ax.set_title('评论词云图', fontsize=16)
-            st.pyplot(fig)
+def word_cloud_analysis():
+    print("🚀 开始词云与高频词分析...")
+    print("=" * 50)
+
+    # 1. 读取情感分析结果
+    print("1. 读取情感分析数据...")
+    df = pd.read_csv('bilibili_comments_with_sentiment.csv')
+    print(f"   ✅ 分析数据: {len(df)} 条评论")
+
+    # 2. 准备不同情感的词频数据
+    print("\n2. 准备词频数据...")
+
+    def get_words_from_segmented(segmented_str):
+        """从分词语句中提取词汇列表"""
+        if isinstance(segmented_str, str):
+            # 移除方括号和引号，然后分割
+            words = segmented_str.strip("[]").replace("'", "").split(", ")
+            return [word for word in words if len(word) > 1]
+        return []
+
+    # 获取所有评论的词汇
+    all_words = []
+    for seg_text in df['segmented_words']:
+        all_words.extend(get_words_from_segmented(seg_text))
+
+    # 按情感分类获取词汇
+    positive_words = []
+    negative_words = []
+    neutral_words = []
+
+    for idx, row in df.iterrows():
+        words = get_words_from_segmented(row['segmented_words'])
+        if row['sentiment_label'] == '积极':
+            positive_words.extend(words)
+        elif row['sentiment_label'] == '消极':
+            negative_words.extend(words)
+        else:
+            neutral_words.extend(words)
+
+    print(f"   总词汇量: {len(all_words)} 个词")
+    print(f"   积极评论词汇: {len(positive_words)} 个")
+    print(f"   消极评论词汇: {len(negative_words)} 个")
+    print(f"   中性评论词汇: {len(neutral_words)} 个")
+
+    # 3. 生成词云
+    print("\n3. 生成词云图...")
+
+    # 设置中文字体（重要！）
+    font_path = 'C:/Windows/Fonts/simhei.ttf'  # 黑体字体
+
+    # 全量词云
+    print("   生成全量词云...")
+    all_text = ' '.join(all_words)
+    wordcloud_all = WordCloud(
+        font_path=font_path,
+        width=800,
+        height=600,
+        background_color='white',
+        max_words=100,
+        colormap='viridis'
+    ).generate(all_text)
+
+    # 积极评论词云
+    print("   生成积极评论词云...")
+    positive_text = ' '.join(positive_words)
+    wordcloud_positive = WordCloud(
+        font_path=font_path,
+        width=800,
+        height=600,
+        background_color='white',
+        max_words=80,
+        colormap='spring'  # 暖色调
+    ).generate(positive_text)
+
+    # 消极评论词云
+    print("   生成消极评论词云...")
+    negative_text = ' '.join(negative_words)
+    wordcloud_negative = WordCloud(
+        font_path=font_path,
+        width=800,
+        height=600,
+        background_color='white',
+        max_words=80,
+        colormap='autumn'  # 冷色调
+    ).generate(negative_text)
+
+    # 4. 绘制词云图
+    print("\n4. 绘制词云图...")
+    plt.figure(figsize=(20, 12))
+
+    # 全量词云
+    plt.subplot(2, 2, 1)
+    plt.imshow(wordcloud_all, interpolation='bilinear')
+    plt.title('全量评论词云图', fontsize=16, fontweight='bold')
+    plt.axis('off')
+
+    # 积极评论词云
+    plt.subplot(2, 2, 2)
+    plt.imshow(wordcloud_positive, interpolation='bilinear')
+    plt.title('积极评论词云图', fontsize=16, fontweight='bold', color='green')
+    plt.axis('off')
+
+    # 消极评论词云
+    plt.subplot(2, 2, 3)
+    plt.imshow(wordcloud_negative, interpolation='bilinear')
+    plt.title('消极评论词云图', fontsize=16, fontweight='bold', color='red')
+    plt.axis('off')
+
+    # 5. 高频词分析
+    print("\n5. 高频词分析...")
+
+    def get_top_words(word_list, top_n=15):
+        """获取前N个高频词"""
+        word_count = Counter(word_list)
+        return word_count.most_common(top_n)
+
+    # 获取各类高频词
+    top_all = get_top_words(all_words)
+    top_positive = get_top_words(positive_words)
+    top_negative = get_top_words(negative_words)
+
+    # 绘制高频词条形图
+    plt.subplot(2, 2, 4)
+
+    # 准备数据 - 取前10个词
+    words_all = [word for word, count in top_all[:10]]
+    counts_all = [count for word, count in top_all[:10]]
+
+    y_pos = np.arange(len(words_all))
+    plt.barh(y_pos, counts_all, color='skyblue')
+    plt.yticks(y_pos, words_all, fontproperties='SimHei')
+    plt.xlabel('出现频次')
+    plt.title('全量评论高频词TOP10', fontsize=14, fontweight='bold')
+    plt.gca().invert_yaxis()  # 倒置Y轴，让最高的在顶部
+
+    plt.tight_layout()
+    plt.savefig('word_cloud_analysis.png', dpi=300, bbox_inches='tight')
+    print("   ✅ 词云图已保存: word_cloud_analysis.png")
+
+    # 6. 高频词对比分析
+    print("\n6. 高频词对比分析:")
+
+    print(f"\n   📊 全量评论高频词TOP10:")
+    for i, (word, count) in enumerate(top_all[:10], 1):
+        print(f"      {i:2d}. {word:8s} : {count:3d} 次")
+
+    print(f"\n   💚 积极评论特有高频词:")
+    positive_unique = [word for word, count in top_positive if word not in [w for w, c in top_negative[:10]]]
+    print(f"      {', '.join(positive_unique[:8])}")
+
+    print(f"\n   💔 消极评论特有高频词:")
+    negative_unique = [word for word, count in top_negative if word not in [w for w, c in top_positive[:10]]]
+    print(f"      {', '.join(negative_unique[:8])}")
+
+    # 7. 情感词汇分析
+    print(f"\n7. 情感词汇洞察:")
+
+    # 定义一些情感词汇示例
+    positive_keywords = ['支持', '厉害', '点赞', '优秀', '发展', '进步', '希望', '感谢']
+    negative_keywords = ['质疑', '反对', '浪费', '问题', '困难', '担心', '失望', '批评']
+
+    pos_count = sum(1 for word in all_words if word in positive_keywords)
+    neg_count = sum(1 for word in all_words if word in negative_keywords)
+
+    print(f"   积极情感词汇出现: {pos_count} 次")
+    print(f"   消极情感词汇出现: {neg_count} 次")
+    print(f"   情感词汇比例: {pos_count / (pos_count + neg_count) * 100:.1f}% 积极")
+
+    return {
+        'all_words': all_words,
+        'positive_words': positive_words,
+        'negative_words': negative_words,
+        'top_all': top_all,
+        'top_positive': top_positive,
+        'top_negative': top_negative
+    }
+
+
+# 运行词云分析
+if __name__ == "__main__":
+    word_analysis_results = word_cloud_analysis()
+
+    print("\n" + "=" * 60)
+    print("✅ 词云图生成完成")
+    print("✅ 高频词分析完成")
+    print("✅ 情感词汇对比完成")
+    print("✅ 文本洞察挖掘完成")
+    print("=" * 60)
 
     # 评论详情
     st.header("💬 评论详情")
@@ -226,6 +345,7 @@ if st.button("生成词云图", type="primary"):
 
 if __name__ == "__main__":
     main()
+
 
 
 
