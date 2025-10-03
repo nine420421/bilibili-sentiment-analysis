@@ -15,6 +15,7 @@ import requests
 from io import BytesIO
 import numpy as np
 from PIL import Image
+import matplotlib.font_manager as fm
 
 # 设置中文字体支持
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS']
@@ -28,144 +29,85 @@ def debug_info(message):
     if DEBUG:
         st.sidebar.write(f"🔍 {message}")
 
-def download_chinese_font():
-    """下载中文字体作为备用方案"""
-    try:
-        # 尝试下载思源黑体
-        font_url = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf"
-        response = requests.get(font_url, timeout=10)
-        if response.status_code == 200:
-            font_path = "./NotoSansCJKsc-Regular.otf"
-            with open(font_path, "wb") as f:
-                f.write(response.content)
-            debug_info(f"下载字体到: {font_path}")
-            return font_path
-    except Exception as e:
-        debug_info(f"字体下载失败: {e}")
-    return None
-
 def get_chinese_font():
-    """获取中文字体 - 多种方案"""
-    font_paths = []
-    
-    # 方案1: 下载的字体
-    downloaded_font = download_chinese_font()
-    if downloaded_font and os.path.exists(downloaded_font):
-        return downloaded_font
-    
-    # 方案2: 系统字体
-    system = platform.system()
-    
-    if system == "Windows":
-        font_paths = [
+    """获取中文字体 - 简化版本"""
+    try:
+        # 方案1: 直接使用matplotlib的字体管理器
+        chinese_fonts = []
+        for font in fm.fontManager.ttflist:
+            font_name = font.name.lower()
+            if any(keyword in font_name for keyword in ['simhei', 'microsoft', 'pingfang', 'heiti', 'stsong', 'noto', 'cjk', 'sc']):
+                chinese_fonts.append(font.fname)
+        
+        if chinese_fonts:
+            debug_info(f"找到 {len(chinese_fonts)} 个中文字体")
+            return chinese_fonts[0]  # 返回第一个找到的字体
+        
+        # 方案2: 常见字体路径
+        common_paths = [
+            # Windows
             "C:/Windows/Fonts/simhei.ttf",
-            "C:/Windows/Fonts/msyh.ttc", 
-            "C:/Windows/Fonts/simsun.ttc",
-            "C:/Windows/Fonts/arial.ttf"
-        ]
-    elif system == "Darwin":  # macOS
-        font_paths = [
-            "/System/Library/Fonts/PingFang.ttc",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "/Library/Fonts/Arial Unicode.ttf",
-            "/System/Library/Fonts/Arial.ttf"
-        ]
-    else:  # Linux
-        font_paths = [
+            "C:/Windows/Fonts/msyh.ttc",
+            # Linux
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/arphic/uming.ttc"
         ]
-    
-    for font_path in font_paths:
-        if os.path.exists(font_path):
-            debug_info(f"找到系统字体: {font_path}")
-            return font_path
-    
-    # 方案3: 使用matplotlib的字体
-    try:
-        from matplotlib import font_manager
-        fonts = [f.name for f in font_manager.fontManager.ttflist if 'CJK' in f.name or 'Chinese' in f.name or 'SC' in f.name]
-        if fonts:
-            debug_info(f"找到matplotlib字体: {fonts[0]}")
-            # 获取字体路径
-            for f in font_manager.fontManager.ttflist:
-                if f.name == fonts[0]:
-                    return f.fname
+        
+        for path in common_paths:
+            if os.path.exists(path):
+                debug_info(f"找到系统字体: {path}")
+                return path
+                
     except Exception as e:
-        debug_info(f"matplotlib字体搜索失败: {e}")
+        debug_info(f"字体搜索错误: {e}")
     
-    debug_info("未找到任何中文字体")
+    debug_info("使用默认字体")
     return None
 
-def create_wordcloud_with_fallback(word_freq, font_path, width=800, height=400, max_words=100, colormap='viridis'):
-    """创建词云，带有多种回退方案"""
-    
-    # 基础配置
-    wc_config = {
-        'width': width,
-        'height': height,
-        'background_color': 'white',
-        'max_words': max_words,
-        'colormap': colormap,
-        'relative_scaling': 0.3,  # 降低相对缩放，让大小差异更明显
-        'random_state': 42,
-        'prefer_horizontal': 0.8,  # 偏好水平方向
-        'scale': 2,  # 提高分辨率
-        'min_font_size': 10,
-        'max_font_size': 100,
-    }
-    
-    # 方案1: 使用指定字体
-    if font_path and os.path.exists(font_path):
-        wc_config['font_path'] = font_path
-        debug_info(f"使用字体: {font_path}")
-        try:
-            wordcloud = WordCloud(**wc_config).generate_from_frequencies(word_freq)
-            debug_info("方案1成功: 使用指定字体")
-            return wordcloud
-        except Exception as e:
-            debug_info(f"方案1失败: {e}")
-    
-    # 方案2: 不使用字体路径，让系统选择
+def create_simple_wordcloud(word_freq, font_path, width=800, height=400, max_words=100, colormap='viridis', background_color='white'):
+    """创建词云的简化版本"""
     try:
-        if 'font_path' in wc_config:
-            del wc_config['font_path']
-        wordcloud = WordCloud(**wc_config).generate_from_frequencies(word_freq)
-        debug_info("方案2成功: 系统默认字体")
+        # 基本配置
+        wc = WordCloud(
+            font_path=font_path,
+            width=width,
+            height=height,
+            background_color=background_color,
+            max_words=max_words,
+            colormap=colormap,
+            relative_scaling=0.5,
+            random_state=42,
+            prefer_horizontal=0.9,  # 更多水平文字
+            scale=2,
+            min_font_size=10,
+            max_font_size=150,
+            stopwords=None,
+            collocations=False,  # 禁用词组组合
+            normalize_plurals=False
+        )
+        
+        # 生成词云
+        wordcloud = wc.generate_from_frequencies(word_freq)
+        debug_info("词云生成成功")
         return wordcloud
+        
     except Exception as e:
-        debug_info(f"方案2失败: {e}")
-    
-    # 方案3: 使用英文模式，只显示ASCII字符
+        debug_info(f"词云生成失败: {e}")
+        return None
+
+def test_font_rendering():
+    """测试字体渲染"""
     try:
-        # 过滤只包含ASCII字符的词汇
-        ascii_freq = {k: v for k, v in word_freq.items() if k.isascii()}
-        if ascii_freq:
-            wordcloud = WordCloud(**wc_config).generate_from_frequencies(ascii_freq)
-            debug_info("方案3成功: ASCII字符模式")
-            return wordcloud
-        else:
-            debug_info("方案3失败: 没有ASCII字符")
+        fig, ax = plt.subplots(figsize=(8, 2))
+        ax.text(0.5, 0.5, "中文测试字体渲染", 
+               fontsize=20, ha='center', va='center')
+        ax.axis('off')
+        st.pyplot(fig)
+        plt.close(fig)
+        return True
     except Exception as e:
-        debug_info(f"方案3失败: {e}")
-    
-    # 方案4: 最小配置
-    try:
-        minimal_config = {
-            'width': width,
-            'height': height,
-            'background_color': 'white',
-            'max_words': min(max_words, 50),
-        }
-        wordcloud = WordCloud(**minimal_config).generate_from_frequencies(word_freq)
-        debug_info("方案4成功: 最小配置")
-        return wordcloud
-    except Exception as e:
-        debug_info(f"方案4失败: {e}")
-    
-    return None
+        debug_info(f"字体渲染测试失败: {e}")
+        return False
 
 def display_word_frequency(word_freq, title="高频词汇"):
     """显示词频的备用方案"""
@@ -189,6 +131,7 @@ def display_word_frequency(word_freq, title="高频词汇"):
         
         plt.tight_layout()
         st.pyplot(fig)
+        plt.close(fig)
 
 def get_words_from_segmented(segmented_str):
     """从分词字符串中提取词汇"""
@@ -196,34 +139,30 @@ def get_words_from_segmented(segmented_str):
         return []
     
     try:
-        # 清理字符串
         clean_str = segmented_str.strip()
         
-        # 多种格式处理
+        # 处理列表格式
         if clean_str.startswith('[') and clean_str.endswith(']'):
-            # 格式1: ['word1', 'word2', 'word3']
-            words = clean_str.strip("[]").replace("'", "").replace('"', '').split(", ")
-        elif '"' in clean_str:
-            # 格式2: "word1" "word2" "word3"
-            words = [word.strip('"') for word in clean_str.split()]
-        elif "'" in clean_str:
-            # 格式3: 'word1' 'word2' 'word3'
-            words = [word.strip("'") for word in clean_str.split()]
+            # 移除方括号和引号
+            content = clean_str[1:-1].replace("'", "").replace('"', '')
+            words = [word.strip() for word in content.split(',')]
         else:
-            # 格式4: word1 word2 word3
+            # 直接分割
             words = clean_str.split()
         
-        # 过滤短词、空词和纯数字
+        # 过滤
         filtered_words = []
         for word in words:
             word_clean = word.strip()
             if (len(word_clean) > 1 and 
                 not word_clean.isdigit() and 
-                not word_clean.isspace()):
+                not word_clean.isspace() and
+                word_clean not in [' ', '', '\\n', '\\t']):
                 filtered_words.append(word_clean)
         
-        debug_info(f"从字符串解析出 {len(filtered_words)} 个词汇")
+        debug_info(f"解析出 {len(filtered_words)} 个词汇")
         return filtered_words
+        
     except Exception as e:
         debug_info(f"分词解析错误: {e}")
         return []
@@ -286,8 +225,13 @@ def main():
             neutral_count = len(df[df['sentiment_label'] == '中性'])
             st.metric("中性评论", neutral_count)
 
-        # 词云分析 - 放在前面以便快速测试
+        # 词云分析
         st.header("☁️ 词云分析")
+
+        # 字体测试
+        if st.sidebar.checkbox("测试字体渲染"):
+            st.sidebar.subheader("字体渲染测试")
+            test_font_rendering()
 
         # 情感选择
         sentiment_option = st.selectbox(
@@ -296,13 +240,15 @@ def main():
         )
 
         # 词云设置选项
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             max_words = st.slider("最大词汇数量", 50, 200, 100)
-            background_color = st.selectbox("背景颜色", ["white", "black", "gray"])
         with col2:
+            background_color = st.selectbox("背景颜色", 
+                ["white", "black", "gray", "lightblue", "lightgreen"])
+        with col3:
             colormap_option = st.selectbox("颜色方案", 
-                ["viridis", "plasma", "inferno", "spring", "summer", "autumn", "winter"])
+                ["viridis", "plasma", "inferno", "spring", "summer", "autumn", "winter", "cool", "hot"])
 
         # 生成词云
         if st.button("生成词云", type="primary"):
@@ -335,7 +281,11 @@ def main():
                     
                     # 显示统计信息
                     st.success(f"✅ 成功提取 {len(all_words)} 个词汇，{len(word_freq)} 个不同词汇")
-                    st.info(f"📊 前10个高频词: {word_freq.most_common(10)}")
+                    
+                    # 显示前10个高频词（格式化的）
+                    top_10 = word_freq.most_common(10)
+                    top_words_str = "、".join([f"{word}({count})" for word, count in top_10])
+                    st.info(f"📊 前10个高频词: {top_words_str}")
                     
                     # 获取字体
                     font_path = get_chinese_font()
@@ -343,29 +293,46 @@ def main():
                     if font_path:
                         st.success(f"🎨 使用字体: {os.path.basename(font_path)}")
                     else:
-                        st.warning("⚠️ 未找到中文字体，尝试使用系统默认字体")
+                        st.warning("⚠️ 使用默认字体")
 
                     # 创建词云
-                    wordcloud = create_wordcloud_with_fallback(
+                    wordcloud = create_simple_wordcloud(
                         word_freq, 
                         font_path, 
                         max_words=max_words,
-                        colormap=colormap_option
+                        colormap=colormap_option,
+                        background_color=background_color
                     )
 
                     if wordcloud is not None:
                         # 显示词云
-                        fig, ax = plt.subplots(figsize=(15, 8))
+                        fig, ax = plt.subplots(figsize=(16, 8))
+                        
+                        # 显示词云图像
                         ax.imshow(wordcloud, interpolation='bilinear')
                         ax.axis('off')
                         ax.set_title(f'{sentiment_option} - 词云图', 
-                                   fontsize=20, pad=20)
+                                   fontsize=20, pad=20, fontweight='bold')
+                        
+                        # 设置背景颜色
+                        fig.patch.set_facecolor(background_color)
+                        ax.set_facecolor(background_color)
                         
                         st.pyplot(fig)
+                        plt.close(fig)
                         st.success("🎉 词云生成成功！")
                         
+                        # 显示词云信息
+                        st.info(f"""
+                        **词云信息:**
+                        - 背景颜色: {background_color}
+                        - 颜色方案: {colormap_option}
+                        - 最大词汇数: {max_words}
+                        - 实际显示词汇: {len(wordcloud.words_)}
+                        """)
+                        
                     else:
-                        st.error("❌ 所有词云生成方案都失败了")
+                        st.error("❌ 词云生成失败")
                         st.info("🔄 显示词频条形图作为替代")
                         display_word_frequency(word_freq, f'{sentiment_option} - 高频词汇')
 
@@ -381,6 +348,7 @@ def main():
                     st.warning("⚠️ 没有找到足够的词汇数据来生成词云")
                     st.info("💡 提示：请检查数据中的 'segmented_words' 列格式是否正确")
 
+        # 其他分析部分...
         # 情感分布饼图
         st.header("🎭 情感分布分析")
         col1, col2 = st.columns(2)
@@ -565,3 +533,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
