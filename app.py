@@ -9,52 +9,54 @@ import plotly.graph_objects as go
 from collections import Counter
 import base64
 import io
+import os
 
 # 设置页面
 st.set_page_config(
     page_title="B站评论情感分析系统",
-    page_icon="🎯",
+    page_icon="🔍",
     layout="wide"
 )
 
-# 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
-
+# 修正字体设置
+try:
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
+except:
+    pass  # 如果字体设置失败，使用默认字体
 
 def main():
-    # 标题
-    st.title("🎯 B站视频评论情感分析系统")
+    st.title("🔍 B站视频评论情感分析系统")
     st.markdown("---")
-
-    # 演示数据（如果用户没有上传文件）
-    st.info("📊 上传你的B站评论数据CSV文件，或使用下面的示例数据体验功能")
+    st.info("📊 上传你的B站评论数据CSV文件，系统将自动进行情感分析并生成可视化报告。")
 
     # 示例数据
     sample_data = {
         'user_name': ['用户A', '用户B', '用户C', '用户D'],
-        'content_cleaned': ['这个视频很棒，学到了很多', '内容一般，没有新意', '非常喜欢，点赞支持', '不太感兴趣'],
+        'content_cleaned': ['这个视频很好看', '内容一般般', '太棒了，推荐', '不喜欢这个'],
         'sentiment_label': ['积极', '消极', '积极', '消极'],
-        'sentiment_score': [0.85, 0.25, 0.92, 0.35],
+        'sentiment_score': [0.85, 0.25, 0.90, 0.15],
         'like_count': [156, 23, 289, 12],
-        'post_time': ['2024-01-01', '2024-01-01', '2024-01-02', '2024-01-02']
+        'post_time': ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04']
     }
 
-    # 文件上传
-    st.sidebar.header("📁 数据上传")
+    st.sidebar.header("📤 数据上传")
     uploaded_file = st.sidebar.file_uploader("选择CSV文件", type=['csv'])
 
     if uploaded_file is not None:
-        # 使用上传的文件
-        df = pd.read_csv(uploaded_file)
-        st.success(f"✅ 成功加载 {len(df)} 条评论数据")
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.success(f"✅ 成功加载 {len(df)} 条评论数据")
+        except Exception as e:
+            st.error(f"❌ 文件读取错误: {e}")
+            st.warning("⚠️ 使用示例数据进行演示")
+            df = pd.DataFrame(sample_data)
     else:
-        # 使用示例数据
         df = pd.DataFrame(sample_data)
-        st.warning("⚠️ 当前使用示例数据，请上传CSV文件获得完整分析")
+        st.warning("⚠️ 当前使用示例数据，请上传CSV文件")
 
     # 数据概览
-    st.header("📊 数据概览")
+    st.header("📈 数据概览")
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
@@ -66,67 +68,59 @@ def main():
         negative_count = len(df[df['sentiment_label'] == '消极'])
         st.metric("消极评论", negative_count)
     with col4:
-        total_likes = df['like_count'].sum() if 'like_count' in df.columns else 0
-        st.metric("总点赞数", f"{total_likes:,}")
+        total_likes = df['like_count'].sum()
+        st.metric("总点赞数", f"{total_likes}")
 
-    # 情感分析
-    st.header("🎭 情感分析")
-
+    # 情感分析图表
+    st.header("📊 情感分析")
     col1, col2 = st.columns(2)
 
     with col1:
-        # 情感分布饼图
         sentiment_counts = df['sentiment_label'].value_counts()
         fig_pie = px.pie(
             values=sentiment_counts.values,
             names=sentiment_counts.index,
             title='评论情感分布',
             color=sentiment_counts.index,
-            color_discrete_map={'积极': '#2E8B57', '消极': '#DC143C', '中性': '#1E90FF'}
+            color_discrete_map={'积极': '#2E86AB', '消极': '#A23B72'}
         )
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col2:
-        # 情感得分分布
         if 'sentiment_score' in df.columns:
             fig_hist = px.histogram(
                 df, x='sentiment_score',
                 title='情感得分分布',
                 nbins=20,
-                color_discrete_sequence=['#636EFA']
+                color_discrete_sequence=['#2E86AB']
             )
             fig_hist.add_vline(x=0.5, line_dash="dash", line_color="red")
             st.plotly_chart(fig_hist, use_container_width=True)
 
-    # 词云生成
+    # 词云分析
     st.header("☁️ 词云分析")
-
     if st.button("生成词云图", type="primary"):
         with st.spinner("正在生成词云..."):
-            # 准备文本数据
             all_text = ' '.join(df['content_cleaned'].astype(str))
-
-            # 生成词云
+            
+            # 简化词云生成，避免字体问题
             wordcloud = WordCloud(
                 width=800,
                 height=400,
                 background_color='white',
                 max_words=100,
                 colormap='viridis',
-                font_path=None  # 在云端使用默认字体
+                font_path=None  # 先不使用自定义字体
             ).generate(all_text)
 
-            # 显示词云
             fig, ax = plt.subplots(figsize=(10, 5))
             ax.imshow(wordcloud, interpolation='bilinear')
             ax.axis('off')
-            ax.set_title('评论词云图', fontsize=16)
+            ax.set_title('评论词云图')
             st.pyplot(fig)
 
-    # 评论浏览
+    # 评论详情
     st.header("💬 评论详情")
-
-    # 筛选选项
     col1, col2 = st.columns(2)
 
     with col1:
@@ -142,17 +136,15 @@ def main():
             ["默认", "点赞数", "情感得分"]
         )
 
-    # 应用筛选
     filtered_df = df[df['sentiment_label'].isin(sentiment_filter)]
 
     if sort_by == "点赞数" and 'like_count' in filtered_df.columns:
-        filtered_df = filtered_df.sort_values('like_count', ascending=False)
+        filtered_df = filtered_df.sort_values(by='like_count', ascending=False)
     elif sort_by == "情感得分" and 'sentiment_score' in filtered_df.columns:
-        filtered_df = filtered_df.sort_values('sentiment_score', ascending=False)
+        filtered_df = filtered_df.sort_values(by='sentiment_score', ascending=False)
 
-    # 显示评论
     st.dataframe(
-        filtered_df[['user_name', 'content_cleaned', 'sentiment_label', 'like_count']],
+        filtered_df[['user_name', 'content_cleaned', 'sentiment_label', 'sentiment_score', 'like_count']],
         use_container_width=True
     )
 
@@ -175,10 +167,9 @@ def main():
            - 情感分布分析
            - 词云生成
            - 评论详情浏览
-           - 数据筛选排序
 
-        **技术栈**: Python + Streamlit + 机器学习
-                """)
+        4. **技术栈**: Python + Streamlit
+        """)
 
-        if __name__ == "__main__":
-            main()
+if __name__ == "__main__":
+    main()
