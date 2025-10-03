@@ -97,79 +97,76 @@ def main():
             fig_hist.add_vline(x=0.5, line_dash="dash", line_color="red")
             st.plotly_chart(fig_hist, use_container_width=True)
 
-   # 词云生成
-st.header("☁️ 词云分析")
+    # 词云生成 - 修正了缩进，确保在main函数内部
+    st.header("☁️ 词云分析")
 
-if st.button("生成词云图", type="primary"):
-    with st.spinner("正在生成词云..."):
-        # 准备文本数据
-        all_text = ' '.join(df['content_cleaned'].astype(str))
-        
-        # 字体路径处理
-        import os
-        
-        # 尝试多种字体路径
-        font_paths =[
-            'C:/Windows/Fonts/simhei.ttf',  # 黑体字体
-            'C:/Windows/Fonts/msyh.ttf',   #微软雅黑
-            None
-        ]
-        
-        selected_font_path = None
-        for font_path in font_paths:
-            if font_path is None:
-                selected_font_path = None
-                break
-            try:
-                if os.path.exists(font_path):
-                    selected_font_path = font_path
-                    st.success(f"使用字体: {font_path}")
+    if st.button("生成词云图", type="primary"):
+        with st.spinner("正在生成词云..."):
+            # 准备文本数据
+            all_text = ' '.join(df['content_cleaned'].astype(str))
+            
+            # 字体路径处理 - 修正云端路径
+            font_paths = [
+                './fonts/SimHei.ttf',           # 项目字体文件夹
+                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux系统字体
+                None  # 最后尝试不使用字体
+            ]
+            
+            selected_font_path = None
+            for font_path in font_paths:
+                if font_path is None:
+                    selected_font_path = None
                     break
-            except:
-                continue
-        
-        if selected_font_path is None:
-            st.warning("⚠️ 未找到中文字体文件，词云可能无法正确显示中文")
-        
-        # 生成词云
-        try:
-            wordcloud = WordCloud(
-                width=800, 
-                height=400,
-                background_color='white',
-                max_words=100,
-                colormap='viridis',
-                font_path=selected_font_path,  # 使用找到的字体路径
-                stopwords=None,  # 可以添加中文停用词
-                collocations=False  # 避免重复词语
-            ).generate(all_text)
+                try:
+                    if os.path.exists(font_path):
+                        selected_font_path = font_path
+                        st.success(f"使用字体: {font_path}")
+                        break
+                except:
+                    continue
             
-            # 显示词云
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis('off')
-            ax.set_title('评论词云图', fontsize=16)
-            st.pyplot(fig)
+            if selected_font_path is None:
+                st.warning("⚠️ 未找到中文字体文件，词云可能无法正确显示中文")
             
-        except Exception as e:
-            st.error(f"❌ 生成词云时出错: {str(e)}")
-            st.info("尝试使用默认设置重新生成...")
-            
-            # 备用方案：不使用字体
-            wordcloud = WordCloud(
-                width=800, 
-                height=400,
-                background_color='white',
-                max_words=100,
-                colormap='viridis',
-                font_path=None
-            ).generate(all_text)
-            
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis('off')
-            ax.set_title('评论词云图', fontsize=16)
-            st.pyplot(fig)
+            # 生成词云
+            try:
+                wordcloud = WordCloud(
+                    width=800, 
+                    height=400,
+                    background_color='white',
+                    max_words=100,
+                    colormap='viridis',
+                    font_path=selected_font_path,  # 使用找到的字体路径
+                    stopwords=None,  # 可以添加中文停用词
+                    collocations=False  # 避免重复词语
+                ).generate(all_text)
+                
+                # 显示词云
+                fig, ax = plt.subplots(figsize=(10, 5))
+                ax.imshow(wordcloud, interpolation='bilinear')
+                ax.axis('off')
+                ax.set_title('评论词云图', fontsize=16)
+                st.pyplot(fig)
+                
+            except Exception as e:
+                st.error(f"❌ 生成词云时出错: {str(e)}")
+                st.info("尝试使用默认设置重新生成...")
+                
+                # 备用方案：不使用字体
+                wordcloud = WordCloud(
+                    width=800, 
+                    height=400,
+                    background_color='white',
+                    max_words=100,
+                    colormap='viridis',
+                    font_path=None
+                ).generate(all_text)
+                
+                fig, ax = plt.subplots(figsize=(10, 5))
+                ax.imshow(wordcloud, interpolation='bilinear')
+                ax.axis('off')
+                ax.set_title('评论词云图', fontsize=16)
+                st.pyplot(fig)
 
     # 评论详情
     st.header("💬 评论详情")
@@ -225,5 +222,3 @@ if st.button("生成词云图", type="primary"):
 
 if __name__ == "__main__":
     main()
-
-
