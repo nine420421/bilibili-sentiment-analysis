@@ -2,71 +2,106 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from wordcloud import WordCloud
-import jieba
 from collections import Counter
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import os
-import platform
-import base64
-import requests
-from io import BytesIO
 import numpy as np
-from PIL import Image
 import matplotlib.font_manager as fm
-import tempfile
 
 # 设置中文字体支持
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
-# 调试信息开关
-DEBUG = st.sidebar.checkbox("显示调试信息", value=True)
-
-def debug_info(message):
-    """显示调试信息"""
-    if DEBUG:
-        st.sidebar.write(f"🔍 {message}")
-
-def get_simple_font():
-    """获取简单可用的字体"""
+def get_best_font():
+    """获取最佳字体"""
     try:
-        # 直接使用matplotlib默认字体
+        # 查找中文字体
+        chinese_fonts = []
+        for font in fm.fontManager.ttflist:
+            font_name = font.name.lower()
+            if any(keyword in font_name for keyword in ['simhei', 'microsoft', 'pingfang', 'heiti', 'stsong']):
+                chinese_fonts.append(font.fname)
+        
+        if chinese_fonts:
+            return chinese_fonts[0]
         return None
-    except Exception as e:
-        debug_info(f"字体获取失败: {e}")
+    except:
         return None
 
-def create_simple_wordcloud_direct(word_freq, max_words=100, colormap='viridis', background_color='white'):
-    """直接创建词云 - 简化版本"""
+def create_bubble_chart(word_freq, max_words=50, title="词云图"):
+    """创建气泡图替代词云"""
     try:
-        # 使用最基本的配置
-        wc = WordCloud(
-            width=1200,
+        # 获取前N个词汇
+        top_words = word_freq.most_common(max_words)
+        if not top_words:
+            return None
+            
+        words = [word for word, count in top_words]
+        counts = [count for word, count in top_words]
+        
+        # 创建气泡图
+        fig = go.Figure()
+        
+        # 计算气泡大小
+        max_count = max(counts)
+        min_count = min(counts)
+        sizes = [10 + 40 * (count - min_count) / (max_count - min_count) for count in counts]
+        
+        # 生成随机位置（避免重叠）
+        np.random.seed(42)
+        x_pos = np.random.rand(len(words))
+        y_pos = np.random.rand(len(words))
+        
+        # 添加气泡
+        fig.add_trace(go.Scatter(
+            x=x_pos,
+            y=y_pos,
+            mode='text+markers',
+            text=words,
+            textposition="middle center",
+            textfont=dict(
+                size=[size/2 for size in sizes],  # 文字大小
+                color='white'
+            ),
+            marker=dict(
+                size=sizes,
+                color=counts,
+                colorscale='Viridis',
+                opacity=0.7,
+                line=dict(width=2, color='white')
+            ),
+            hovertemplate=
+            "<b>%{text}</b><br>" +
+            "出现次数: %{marker.color}<br>" +
+            "<extra></extra>"
+        ))
+        
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=20)
+            ),
+            showlegend=False,
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            plot_bgcolor='white',
             height=600,
-            background_color=background_color,
-            max_words=max_words,
-            colormap=colormap,
-            random_state=42,
-            relative_scaling=0.3,
-            min_font_size=10,
-            max_font_size=120,
-            collocations=False
+            margin=dict(l=20, r=20, t=60, b=20)
         )
         
-        # 生成词云
-        wordcloud = wc.generate_from_frequencies(word_freq)
-        return wordcloud
+        return fig
+        
     except Exception as e:
-        debug_info(f"简单词云失败: {e}")
+        st.error(f"气泡图创建失败: {e}")
         return None
 
-def create_text_cloud_manual(word_freq, max_words=50, colormap='viridis', background_color='white'):
-    """创建文本云 - 确保显示文字"""
+def create_text_cloud_matplotlib(word_freq, max_words=50, colormap='viridis', background_color='white'):
+    """使用matplotlib创建文本云"""
     try:
-        # 限制词汇数量
+        # 获取词汇
         top_words = word_freq.most_common(max_words)
         if not top_words:
             return None
@@ -85,27 +120,23 @@ def create_text_cloud_manual(word_freq, max_words=50, colormap='viridis', backgr
         max_count = max(counts)
         min_count = min(counts)
         
-        # 简单的网格布局
-        cols = 6  # 每行6个词
-        rows = (len(words) + cols - 1) // cols
-        
-        # 颜色映射
+        # 获取颜色映射
         cmap = plt.cm.get_cmap(colormap)
         
+        # 生成位置
+        np.random.seed(42)
+        
+        # 绘制每个词汇
         for i, (word, count) in enumerate(zip(words, counts)):
-            # 计算位置
-            row = i // cols
-            col = i % cols
-            
-            # 计算字体大小 (20-60之间)
+            # 计算字体大小
             if max_count == min_count:
-                fontsize = 40
+                fontsize = 30
             else:
-                fontsize = 20 + 40 * (count - min_count) / (max_count - min_count)
+                fontsize = 15 + 35 * (count - min_count) / (max_count - min_count)
             
-            # 计算位置
-            x = (col + 0.5) * (1.0 / cols)
-            y = 1.0 - (row + 0.5) * (1.0 / rows)
+            # 随机位置（在中心区域）
+            x = np.random.uniform(0.1, 0.9)
+            y = np.random.uniform(0.1, 0.9)
             
             # 计算颜色
             color = cmap(i / len(words))
@@ -115,23 +146,25 @@ def create_text_cloud_manual(word_freq, max_words=50, colormap='viridis', backgr
                    fontsize=fontsize,
                    ha='center', va='center',
                    color=color,
-                   transform=ax.transAxes)
+                   alpha=0.8,
+                   transform=ax.transAxes,
+                   fontproperties=fm.FontProperties(fname=get_best_font()) if get_best_font() else None)
         
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
-        ax.set_title('词云图 - 手动布局', fontsize=20, pad=20)
+        ax.set_title('词云图 - 随机布局', fontsize=20, pad=20)
         
         return fig
         
     except Exception as e:
-        debug_info(f"文本云创建失败: {e}")
+        st.error(f"Matplotlib文本云失败: {e}")
         return None
 
-def create_fallback_chart(word_freq, title="高频词汇"):
-    """创建备用图表"""
+def create_advanced_bar_chart(word_freq, title="高频词汇云图"):
+    """创建高级条形图"""
     try:
-        top_words = word_freq.most_common(20)
+        top_words = word_freq.most_common(30)
         
         if not top_words:
             return None
@@ -139,18 +172,31 @@ def create_fallback_chart(word_freq, title="高频词汇"):
         words = [word for word, _ in top_words]
         counts = [count for _, count in top_words]
         
-        # 使用plotly创建水平条形图
-        fig = px.bar(
-            x=counts,
+        # 创建水平条形图，但使用圆形标记
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
             y=words,
+            x=counts,
             orientation='h',
-            title=title,
-            labels={'x': '出现次数', 'y': '词汇'},
-            color=counts,
-            color_continuous_scale='blues'
-        )
+            marker=dict(
+                color=counts,
+                colorscale='Viridis',
+                line=dict(color='white', width=1)
+            ),
+            text=counts,
+            textposition='auto',
+            hovertemplate='<b>%{y}</b><br>出现次数: %{x}<extra></extra>'
+        ))
         
         fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=20)
+            ),
+            xaxis_title="出现次数",
+            yaxis_title="词汇",
             showlegend=False,
             height=600,
             yaxis={'categoryorder': 'total ascending'}
@@ -159,7 +205,64 @@ def create_fallback_chart(word_freq, title="高频词汇"):
         return fig
         
     except Exception as e:
-        debug_info(f"备用图表创建失败: {e}")
+        st.error(f"高级条形图失败: {e}")
+        return None
+
+def create_word_importance_chart(word_freq, title="词汇重要性分布"):
+    """创建词汇重要性图表"""
+    try:
+        top_words = word_freq.most_common(25)
+        
+        if not top_words:
+            return None
+            
+        words = [word for word, _ in top_words]
+        counts = [count for _, count in top_words]
+        
+        # 创建散点图显示词汇重要性
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=range(len(words)),
+            y=counts,
+            mode='markers+text',
+            text=words,
+            textposition="top center",
+            marker=dict(
+                size=[count/2 for count in counts],
+                color=counts,
+                colorscale='Rainbow',
+                opacity=0.7,
+                line=dict(width=2, color='darkgray')
+            ),
+            textfont=dict(size=14),
+            hovertemplate='<b>%{text}</b><br>出现次数: %{y}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=20)
+            ),
+            xaxis=dict(
+                showticklabels=False,
+                showgrid=False,
+                title=""
+            ),
+            yaxis=dict(
+                title="出现次数",
+                gridcolor='lightgray'
+            ),
+            showlegend=False,
+            height=500,
+            plot_bgcolor='white'
+        )
+        
+        return fig
+        
+    except Exception as e:
+        st.error(f"词汇重要性图表失败: {e}")
         return None
 
 def get_words_from_segmented(segmented_str):
@@ -189,7 +292,6 @@ def get_words_from_segmented(segmented_str):
         return filtered_words
         
     except Exception as e:
-        debug_info(f"分词解析错误: {e}")
         return []
 
 # 设置页面
@@ -220,19 +322,6 @@ def main():
         # 数据预处理
         if 'post_time' in df.columns:
             df['post_time'] = pd.to_datetime(df['post_time'], errors='coerce')
-
-        # 数据检查
-        st.sidebar.subheader("📋 数据检查")
-        st.sidebar.write(f"数据形状: {df.shape}")
-        
-        # 检查必要列是否存在
-        required_columns = ['segmented_words', 'sentiment_label']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        
-        if missing_columns:
-            st.error(f"❌ 缺少必要列: {missing_columns}")
-            st.info("请确保CSV文件包含 'segmented_words' 和 'sentiment_label' 列")
-            return
 
         # 显示基本信息
         st.header("📊 数据概览")
@@ -301,34 +390,30 @@ def main():
                     labels={'comment_id': '评论数量', 'post_time': '日期'}
                 )
                 st.plotly_chart(fig_count, use_container_width=True)
-        else:
-            st.info("数据中没有时间信息，无法显示时间趋势")
 
-        # 词云分析
-        st.header("☁️ 词云分析")
+        # 词云分析 - 使用替代方案
+        st.header("☁️ 词云分析（替代方案）")
 
         # 情感选择
         sentiment_option = st.selectbox(
-            "选择情感类型查看词云:",
+            "选择情感类型:",
             ["全部评论", "积极评论", "消极评论", "中性评论"],
             key="sentiment_selector"
         )
 
-        # 词云设置选项
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            max_words = st.slider("最大词汇数量", 20, 100, 50, key="max_words_slider")
-        with col2:
-            background_color = st.selectbox("背景颜色", 
-                ["white", "black", "#f0f0f0"], key="bg_color_selector")
-        with col3:
-            colormap_option = st.selectbox("颜色方案", 
-                ["viridis", "plasma", "spring", "summer", "autumn", "winter"], 
-                key="colormap_selector")
+        # 可视化方案选择
+        viz_option = st.selectbox(
+            "选择可视化方案:",
+            ["气泡图", "文本云", "高级条形图", "词汇重要性图"],
+            help="选择不同的方式来可视化词汇分布"
+        )
 
-        # 生成词云
-        if st.button("生成词云", type="primary", key="generate_wordcloud"):
-            with st.spinner("正在生成词云..."):
+        # 词汇数量设置
+        max_words = st.slider("显示词汇数量", 20, 100, 50, key="max_words_slider")
+
+        # 生成图表
+        if st.button("生成可视化", type="primary", key="generate_viz"):
+            with st.spinner("正在生成可视化图表..."):
                 # 根据选择过滤数据
                 if sentiment_option == "全部评论":
                     target_df = df
@@ -339,8 +424,6 @@ def main():
                 else:
                     target_df = df[df['sentiment_label'] == '中性']
 
-                debug_info(f"目标数据行数: {len(target_df)}")
-                
                 if len(target_df) == 0:
                     st.warning(f"⚠️ 没有找到 {sentiment_option} 的数据")
                     return
@@ -363,56 +446,40 @@ def main():
                     top_words_str = "、".join([f"{word}({count})" for word, count in top_10])
                     st.info(f"📊 前10个高频词: {top_words_str}")
 
-                    # 方案1: 尝试简单词云
-                    st.subheader("方案1: 简单词云")
-                    wordcloud = create_simple_wordcloud_direct(
-                        word_freq,
-                        max_words=max_words,
-                        colormap=colormap_option,
-                        background_color=background_color
-                    )
-
-                    if wordcloud is not None:
-                        # 显示词云
-                        fig, ax = plt.subplots(figsize=(16, 8))
-                        ax.imshow(wordcloud, interpolation='bilinear')
-                        ax.axis('off')
-                        ax.set_title(f'{sentiment_option} - 词云图', fontsize=20, pad=20)
-                        fig.patch.set_facecolor(background_color)
-                        st.pyplot(fig)
-                        plt.close(fig)
-                        st.success("🎉 简单词云生成成功！")
-                    else:
-                        st.warning("❌ 简单词云生成失败，尝试方案2")
-
-                        # 方案2: 手动文本云
-                        st.subheader("方案2: 文本云布局")
-                        text_fig = create_text_cloud_manual(
-                            word_freq,
-                            max_words=min(max_words, 30),  # 手动布局限制词汇数
-                            colormap=colormap_option,
-                            background_color=background_color
+                    # 根据选择的方案生成图表
+                    if viz_option == "气泡图":
+                        fig = create_bubble_chart(
+                            word_freq, 
+                            max_words=max_words,
+                            title=f'{sentiment_option} - 词汇气泡图'
                         )
-
-                        if text_fig is not None:
-                            st.pyplot(text_fig)
-                            plt.close(text_fig)
-                            st.success("🎉 文本云生成成功！")
-                        else:
-                            st.error("❌ 文本云生成失败")
-
-                            # 方案3: 使用plotly备用图表
-                            st.subheader("方案3: 高频词汇图表")
-                            fallback_fig = create_fallback_chart(
-                                word_freq, 
-                                f'{sentiment_option} - 高频词汇'
-                            )
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
                             
-                            if fallback_fig is not None:
-                                st.plotly_chart(fallback_fig, use_container_width=True)
-                                st.info("📊 使用高频词汇图表作为词云替代")
-                            else:
-                                st.error("❌ 所有方案都失败了")
+                    elif viz_option == "文本云":
+                        fig = create_text_cloud_matplotlib(
+                            word_freq,
+                            max_words=max_words
+                        )
+                        if fig:
+                            st.pyplot(fig)
+                            plt.close(fig)
+                            
+                    elif viz_option == "高级条形图":
+                        fig = create_advanced_bar_chart(
+                            word_freq,
+                            title=f'{sentiment_option} - 高频词汇云图'
+                        )
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                    elif viz_option == "词汇重要性图":
+                        fig = create_word_importance_chart(
+                            word_freq,
+                            title=f'{sentiment_option} - 词汇重要性分布'
+                        )
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
 
                     # 显示高频词表格
                     st.subheader("📋 高频词汇TOP20")
@@ -421,7 +488,7 @@ def main():
                     st.dataframe(word_df, use_container_width=True, height=400)
 
                 else:
-                    st.warning("⚠️ 没有找到足够的词汇数据来生成词云")
+                    st.warning("⚠️ 没有找到足够的词汇数据")
 
         # 评论详情查看
         st.header("💬 评论详情浏览")
