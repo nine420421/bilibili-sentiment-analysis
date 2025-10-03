@@ -164,45 +164,57 @@ def main():
                 else:
                     target_df = df[df['sentiment_label'] == '中性']
                     color_map = 'winter'
-
+        
                 # 准备文本数据
                 def get_words_from_segmented(segmented_str):
                     if isinstance(segmented_str, str):
                         words = segmented_str.strip("[]").replace("'", "").split(", ")
                         return [word for word in words if len(word) > 1]
                     return []
-
+        
                 all_words = []
                 for seg_text in target_df['segmented_words']:
                     all_words.extend(get_words_from_segmented(seg_text))
-
+        
                 if all_words:
                     text = ' '.join(all_words)
-
+                    
+                    # 获取字体路径
+                    font_path = get_font_path()
+                    
+                    # 词云配置
+                    wordcloud_config = {
+                        'width': 800,
+                        'height': 400,
+                        'background_color': 'white',
+                        'max_words': 100,
+                        'colormap': color_map
+                    }
+                    
+                    # 如果有可用的字体文件，添加字体路径
+                    if font_path and os.path.exists(font_path):
+                        wordcloud_config['font_path'] = font_path
+                    else:
+                        st.warning("未找到中文字体，词云可能无法正确显示中文")
+        
                     # 生成词云
-                    wordcloud = WordCloud(
-                        font_path='C:/Windows/Fonts/simhei.ttf',
-                        width=800, height=400,
-                        background_color='white',
-                        max_words=100,
-                        colormap=color_map
-                    ).generate(text)
-
+                    wordcloud = WordCloud(**wordcloud_config).generate(text)
+        
                     # 显示词云
                     fig, ax = plt.subplots(figsize=(10, 5))
                     ax.imshow(wordcloud, interpolation='bilinear')
                     ax.axis('off')
                     ax.set_title(f'{sentiment_option}词云图', fontsize=16)
                     st.pyplot(fig)
-
+        
                     # 显示高频词
                     st.subheader("📋 高频词汇TOP15")
                     word_count = Counter(all_words)
                     top_words = word_count.most_common(15)
-
+        
                     words = [word for word, count in top_words]
                     counts = [count for word, count in top_words]
-
+        
                     fig_bar = px.bar(
                         x=counts, y=words,
                         orientation='h',
@@ -212,7 +224,6 @@ def main():
                     st.plotly_chart(fig_bar, use_container_width=True)
                 else:
                     st.warning("没有找到足够的词汇数据来生成词云")
-
         # 评论详情查看
         st.header("💬 评论详情浏览")
 
@@ -337,3 +348,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
