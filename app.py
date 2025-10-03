@@ -10,40 +10,103 @@ import plotly.graph_objects as go
 from datetime import datetime
 import os
 import platform
+import base64
+import requests
+from io import BytesIO
 
 # 设置中文字体支持
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
-def get_font_path():
-    """获取可用的中文字体路径"""
+# 调试信息开关
+DEBUG = st.sidebar.checkbox("显示调试信息", value=False)
+
+def debug_info(message):
+    """显示调试信息"""
+    if DEBUG:
+        st.sidebar.write(f"🔍 {message}")
+
+def get_chinese_font():
+    """获取中文字体 - 多种方案"""
+    # 方案1: 尝试系统字体
     system = platform.system()
+    font_paths = []
     
     if system == "Windows":
-        possible_paths = [
+        font_paths = [
             "C:/Windows/Fonts/simhei.ttf",
-            "C:/Windows/Fonts/msyh.ttc",
-            "C:/Windows/Fonts/simsun.ttc"
+            "C:/Windows/Fonts/msyh.ttc", 
+            "C:/Windows/Fonts/simsun.ttc",
+            "C:/Windows/Fonts/arial.ttf"
         ]
     elif system == "Darwin":  # macOS
-        possible_paths = [
+        font_paths = [
             "/System/Library/Fonts/PingFang.ttc",
             "/System/Library/Fonts/Helvetica.ttc",
-            "/Library/Fonts/Arial Unicode.ttf"
+            "/Library/Fonts/Arial Unicode.ttf",
+            "/System/Library/Fonts/Arial.ttf"
         ]
-    else:  # Linux 和其他系统
-        possible_paths = [
+    else:  # Linux
+        font_paths = [
             "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/arphic/uming.ttc"
         ]
     
-    # 检查字体文件是否存在
-    for font_path in possible_paths:
+    for font_path in font_paths:
         if os.path.exists(font_path):
+            debug_info(f"找到字体: {font_path}")
             return font_path
     
+    # 方案2: 如果系统字体都找不到，使用默认字体（可能不支持中文）
+    debug_info("未找到系统字体文件")
     return None
+
+def display_word_frequency(word_freq):
+    """显示词频的备用方案"""
+    top_words = word_freq.most_common(15)
+    
+    if top_words:
+        words = [word for word, count in top_words]
+        counts = [count for word, count in top_words]
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(words, counts)
+        ax.set_xlabel('出现次数')
+        ax.set_title('高频词汇（备用显示）')
+        
+        # 设置中文字体
+        font_path = get_chinese_font()
+        if font_path:
+            plt.rcParams['font.family'] = ['SimHei', 'Microsoft YaHei']
+        
+        st.pyplot(fig)
+
+def get_words_from_segmented(segmented_str):
+    """从分词字符串中提取词汇"""
+    if pd.isna(segmented_str) or not isinstance(segmented_str, str):
+        return []
+    
+    # 多种格式处理
+    try:
+        # 格式1: ['word1', 'word2', 'word3']
+        if segmented_str.startswith('[') and segmented_str.endswith(']'):
+            words = segmented_str.strip("[]").replace("'", "").replace('"', '').split(", ")
+        # 格式2: "word1" "word2" "word3"
+        elif '"' in segmented_str:
+            words = segmented_str.replace('"', '').split()
+        # 格式3: word1 word2 word3
+        else:
+            words = segmented_str.split()
+        
+        # 过滤短词和空词
+        filtered_words = [word.strip() for word in words if len(word.strip()) > 1]
+        debug_info(f"从字符串解析出 {len(filtered_words)} 个词汇")
+        return filtered_words
+    except Exception as e:
+        debug_info(f"分词解析错误: {e}")
+        return []
 
 # 设置页面
 st.set_page_config(
@@ -51,7 +114,6 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
-
 
 def main():
     # 标题和介绍
@@ -65,10 +127,33 @@ def main():
     if uploaded_file is not None:
         # 读取数据
         df = pd.read_csv(uploaded_file)
-
+        
         # 数据预处理
         if 'post_time' in df.columns:
             df['post_time'] = pd.to_datetime(df['post_time'])
+
+        # 数据检查
+        st.sidebar.subheader("📋 数据检查")
+        st.sidebar.write(f"数据形状: {df.shape}")
+        st.sidebar.write("列名:", list(df.columns))
+        
+        # 检查必要列是否存在
+        required_columns = ['segmented_words', 'sentiment_label']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            st.error(f"❌ 缺少必要列: {missing_columns}")
+            st.stop()
+        
+        # 显示数据样例
+        if st.sidebar.checkbox("显示数据样例"):
+            st.sidebar.dataframe(df.head(3))
+        
+        # 检查分词列数据
+        if st.sidebar.checkbox("检查分词数据"):
+            st.sidebar.write("分词列样例:")
+            for i, seg_text in enumerate(df['segmented_words'].head(3)):
+                st.sidebar.write(f"{i+1}: {seg_text}")
 
         # 显示基本信息
         st.header("📊 数据概览")
@@ -104,14 +189,15 @@ def main():
 
         with col2:
             # 情感得分分布
-            fig_hist = px.histogram(
-                df, x='sentiment_score',
-                title='情感得分分布',
-                nbins=20,
-                color_discrete_sequence=['#636EFA']
-            )
-            fig_hist.add_vline(x=0.5, line_dash="dash", line_color="red")
-            st.plotly_chart(fig_hist, use_container_width=True)
+            if 'sentiment_score' in df.columns:
+                fig_hist = px.histogram(
+                    df, x='sentiment_score',
+                    title='情感得分分布',
+                    nbins=20,
+                    color_discrete_sequence=['#636EFA']
+                )
+                fig_hist.add_vline(x=0.5, line_dash="dash", line_color="red")
+                st.plotly_chart(fig_hist, use_container_width=True)
 
         # 时间趋势分析
         st.header("📈 评论时间趋势")
@@ -148,6 +234,13 @@ def main():
             ["全部评论", "积极评论", "消极评论", "中性评论"]
         )
 
+        # 词云设置选项
+        col1, col2 = st.columns(2)
+        with col1:
+            max_words = st.slider("最大词汇数量", 50, 200, 100)
+        with col2:
+            background_color = st.selectbox("背景颜色", ["white", "black", "gray"])
+
         # 生成词云
         if st.button("生成词云"):
             with st.spinner("正在生成词云..."):
@@ -164,66 +257,94 @@ def main():
                 else:
                     target_df = df[df['sentiment_label'] == '中性']
                     color_map = 'winter'
-        
+
+                debug_info(f"目标数据行数: {len(target_df)}")
+                if len(target_df) > 0:
+                    debug_info(f"分词样例: {target_df['segmented_words'].iloc[0]}")
+
                 # 准备文本数据
-                def get_words_from_segmented(segmented_str):
-                    if isinstance(segmented_str, str):
-                        words = segmented_str.strip("[]").replace("'", "").split(", ")
-                        return [word for word in words if len(word) > 1]
-                    return []
-        
                 all_words = []
                 for seg_text in target_df['segmented_words']:
-                    all_words.extend(get_words_from_segmented(seg_text))
-        
+                    words = get_words_from_segmented(seg_text)
+                    all_words.extend(words)
+
                 if all_words:
-                    text = ' '.join(all_words)
+                    # 统计词频
+                    word_freq = Counter(all_words)
                     
-                    # 获取字体路径
-                    font_path = get_font_path()
+                    # 调试信息
+                    st.write(f"✅ 成功提取 {len(all_words)} 个词汇，{len(word_freq)} 个不同词汇")
+                    st.write(f"📊 前5个高频词: {word_freq.most_common(5)}")
                     
-                    # 词云配置
-                    wordcloud_config = {
+                    # 获取字体
+                    font_path = get_chinese_font()
+                    
+                    # 创建词云配置
+                    wc_config = {
                         'width': 800,
                         'height': 400,
-                        'background_color': 'white',
-                        'max_words': 100,
-                        'colormap': color_map
+                        'background_color': background_color,
+                        'max_words': max_words,
+                        'colormap': color_map,
+                        'relative_scaling': 0.5,
+                        'random_state': 42
                     }
                     
-                    # 如果有可用的字体文件，添加字体路径
-                    if font_path and os.path.exists(font_path):
-                        wordcloud_config['font_path'] = font_path
+                    # 如果有字体就添加
+                    if font_path:
+                        wc_config['font_path'] = font_path
+                        st.success(f"🎨 使用字体: {os.path.basename(font_path)}")
                     else:
-                        st.warning("未找到中文字体，词云可能无法正确显示中文")
-        
-                    # 生成词云
-                    wordcloud = WordCloud(**wordcloud_config).generate(text)
-        
-                    # 显示词云
-                    fig, ax = plt.subplots(figsize=(10, 5))
-                    ax.imshow(wordcloud, interpolation='bilinear')
-                    ax.axis('off')
-                    ax.set_title(f'{sentiment_option}词云图', fontsize=16)
-                    st.pyplot(fig)
-        
-                    # 显示高频词
-                    st.subheader("📋 高频词汇TOP15")
-                    word_count = Counter(all_words)
-                    top_words = word_count.most_common(15)
-        
-                    words = [word for word, count in top_words]
-                    counts = [count for word, count in top_words]
-        
+                        st.warning("🔤 使用默认字体（可能不支持中文）")
+
+                    try:
+                        # 生成词云
+                        wordcloud = WordCloud(**wc_config).generate_from_frequencies(word_freq)
+                        
+                        # 显示词云
+                        fig, ax = plt.subplots(figsize=(12, 6))
+                        ax.imshow(wordcloud, interpolation='bilinear')
+                        ax.axis('off')
+                        ax.set_title(f'{sentiment_option} - 词云图', fontsize=16, pad=20)
+                        
+                        # 确保使用支持中文的字体
+                        if font_path:
+                            plt.rcParams['font.family'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+                        
+                        st.pyplot(fig)
+                        
+                    except Exception as e:
+                        st.error(f"❌ 生成词云时出错: {str(e)}")
+                        
+                        # 备用方案：直接显示词频
+                        st.info("🔄 尝试备用方案：显示词频条形图")
+                        display_word_frequency(word_freq)
+
+                    # 显示高频词表格
+                    st.subheader("📋 高频词汇TOP20")
+                    top_words = word_freq.most_common(20)
+                    
+                    # 创建数据框显示
+                    word_df = pd.DataFrame(top_words, columns=['词汇', '出现次数'])
+                    st.dataframe(word_df, use_container_width=True)
+                    
+                    # 同时显示条形图
                     fig_bar = px.bar(
-                        x=counts, y=words,
+                        x=[count for _, count in top_words],
+                        y=[word for word, _ in top_words],
                         orientation='h',
                         title='高频词汇排行榜',
-                        labels={'x': '出现次数', 'y': '词汇'}
+                        labels={'x': '出现次数', 'y': '词汇'},
+                        color=[count for _, count in top_words],
+                        color_continuous_scale='blues'
                     )
+                    fig_bar.update_layout(showlegend=False)
                     st.plotly_chart(fig_bar, use_container_width=True)
+
                 else:
-                    st.warning("没有找到足够的词汇数据来生成词云")
+                    st.warning("⚠️ 没有找到足够的词汇数据来生成词云")
+                    st.info("💡 提示：请检查数据中的 'segmented_words' 列格式是否正确")
+
         # 评论详情查看
         st.header("💬 评论详情浏览")
 
@@ -235,40 +356,50 @@ def main():
         )
 
         # 点赞数范围筛选
-        min_likes, max_likes = st.slider(
-            "点赞数范围:",
-            min_value=int(df['like_count'].min()),
-            max_value=int(df['like_count'].max()),
-            value=(0, int(df['like_count'].max()))
-        )
+        min_likes = 0
+        max_likes = 100
+        if 'like_count' in df.columns:
+            min_likes = int(df['like_count'].min())
+            max_likes = int(df['like_count'].max())
+            
+            min_likes, max_likes = st.slider(
+                "点赞数范围:",
+                min_value=min_likes,
+                max_value=max_likes,
+                value=(0, max_likes)
+            )
 
         # 应用筛选
-        filtered_df = df[
-            (df['sentiment_label'].isin(sentiment_filter)) &
-            (df['like_count'] >= min_likes) &
-            (df['like_count'] <= max_likes)
+        filtered_df = df[df['sentiment_label'].isin(sentiment_filter)]
+        
+        if 'like_count' in df.columns:
+            filtered_df = filtered_df[
+                (filtered_df['like_count'] >= min_likes) & 
+                (filtered_df['like_count'] <= max_likes)
             ]
 
         # 显示筛选后的评论
         st.subheader(f"筛选结果: {len(filtered_df)} 条评论")
 
         # 排序选项
-        sort_option = st.selectbox(
-            "排序方式:",
-            ["按点赞数降序", "按情感得分降序", "按时间降序"]
-        )
+        sort_options = ["按点赞数降序"]
+        if 'sentiment_score' in df.columns:
+            sort_options.append("按情感得分降序")
+        if 'post_time' in df.columns:
+            sort_options.append("按时间降序")
+            
+        sort_option = st.selectbox("排序方式:", sort_options)
 
-        if sort_option == "按点赞数降序":
+        if sort_option == "按点赞数降序" and 'like_count' in filtered_df.columns:
             filtered_df = filtered_df.sort_values('like_count', ascending=False)
-        elif sort_option == "按情感得分降序":
+        elif sort_option == "按情感得分降序" and 'sentiment_score' in filtered_df.columns:
             filtered_df = filtered_df.sort_values('sentiment_score', ascending=False)
-        else:
-            if 'post_time' in filtered_df.columns:
-                filtered_df = filtered_df.sort_values('post_time', ascending=False)
+        elif sort_option == "按时间降序" and 'post_time' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values('post_time', ascending=False)
 
         # 分页显示
         page_size = 10
-        total_pages = (len(filtered_df) // page_size) + 1
+        total_pages = max(1, (len(filtered_df) // page_size) + 1)
 
         page_number = st.number_input("页码", min_value=1, max_value=total_pages, value=1)
         start_idx = (page_number - 1) * page_size
@@ -290,11 +421,11 @@ def main():
             # 显示评论卡片
             st.markdown(f"""
             <div style="border-left: 4px solid {border_color}; padding: 10px; margin: 10px 0; background-color: #f8f9fa;">
-                <div style="display: flex; justify-content: between; align-items: center;">
-                    <strong>{color} {row['user_name']}</strong>
-                    <span>👍 {row['like_count']} | 情感: {row['sentiment_score']:.3f}</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>{color} {row['user_name'] if 'user_name' in row else '匿名用户'}</strong>
+                    <span>👍 {row['like_count'] if 'like_count' in row else 0} | 情感: {row['sentiment_score'] if 'sentiment_score' in row else 'N/A'}</span>
                 </div>
-                <p style="margin: 5px 0;">{row['content_cleaned']}</p >
+                <p style="margin: 5px 0;">{row['content_cleaned'] if 'content_cleaned' in row else '无内容'}</p>
                 <small>时间: {row['post_time'] if 'post_time' in row else '未知'}</small>
             </div>
             """, unsafe_allow_html=True)
@@ -344,8 +475,5 @@ def main():
             - 评论详情浏览
             """)
 
-
 if __name__ == "__main__":
-
     main()
-
