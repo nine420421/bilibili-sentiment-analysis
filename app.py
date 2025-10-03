@@ -272,6 +272,19 @@ def main():
         if 'post_time' in df.columns:
             df['post_time'] = pd.to_datetime(df['post_time'], errors='coerce')
 
+        # 数据检查
+        st.sidebar.subheader("📋 数据检查")
+        st.sidebar.write(f"数据形状: {df.shape}")
+        
+        # 检查必要列是否存在
+        required_columns = ['segmented_words', 'sentiment_label']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            st.error(f"❌ 缺少必要列: {missing_columns}")
+            st.info("请确保CSV文件包含 'segmented_words' 和 'sentiment_label' 列")
+            return
+
         # 显示基本信息
         st.header("📊 数据概览")
         col1, col2, col3, col4 = st.columns(4)
@@ -472,8 +485,94 @@ def main():
                 else:
                     st.warning("⚠️ 没有找到足够的词汇数据来生成词云")
 
-        # 评论详情查看（保持不变）
-        # ... 这里保持原有的评论详情代码
+        # 评论详情查看
+        st.header("💬 评论详情浏览")
+
+        # 情感筛选
+        sentiment_filter = st.multiselect(
+            "筛选情感类型:",
+            options=['积极', '消极', '中性'],
+            default=['积极', '消极', '中性'],
+            key="sentiment_filter"
+        )
+
+        # 点赞数范围筛选
+        min_likes = 0
+        max_likes = 100
+        if 'like_count' in df.columns:
+            min_likes = int(df['like_count'].min())
+            max_likes = int(df['like_count'].max())
+            
+            min_likes, max_likes = st.slider(
+                "点赞数范围:",
+                min_value=min_likes,
+                max_value=max_likes,
+                value=(0, max_likes),
+                key="like_slider"
+            )
+
+        # 应用筛选
+        filtered_df = df[df['sentiment_label'].isin(sentiment_filter)]
+        
+        if 'like_count' in df.columns:
+            filtered_df = filtered_df[
+                (filtered_df['like_count'] >= min_likes) & 
+                (filtered_df['like_count'] <= max_likes)
+            ]
+
+        # 显示筛选后的评论
+        st.subheader(f"筛选结果: {len(filtered_df)} 条评论")
+
+        # 排序选项
+        sort_options = ["默认排序"]
+        if 'like_count' in df.columns:
+            sort_options.append("按点赞数降序")
+        if 'sentiment_score' in df.columns:
+            sort_options.append("按情感得分降序")
+        if 'post_time' in df.columns:
+            sort_options.append("按时间降序")
+            
+        sort_option = st.selectbox("排序方式:", sort_options, key="sort_selector")
+
+        if sort_option == "按点赞数降序" and 'like_count' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values('like_count', ascending=False)
+        elif sort_option == "按情感得分降序" and 'sentiment_score' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values('sentiment_score', ascending=False)
+        elif sort_option == "按时间降序" and 'post_time' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values('post_time', ascending=False)
+
+        # 分页显示
+        page_size = 10
+        total_pages = max(1, (len(filtered_df) // page_size) + 1)
+
+        page_number = st.number_input("页码", min_value=1, max_value=total_pages, value=1, key="page_selector")
+        start_idx = (page_number - 1) * page_size
+        end_idx = start_idx + page_size
+
+        # 显示评论
+        for idx, row in filtered_df.iloc[start_idx:end_idx].iterrows():
+            # 根据情感设置颜色
+            if row['sentiment_label'] == '积极':
+                color = "🟢"
+                border_color = "#2E8B57"
+            elif row['sentiment_label'] == '消极':
+                color = "🔴"
+                border_color = "#DC143C"
+            else:
+                color = "🔵"
+                border_color = "#1E90FF"
+
+            # 显示评论卡片
+            st.markdown(f"""
+            <div style="border-left: 4px solid {border_color}; padding: 10px; margin: 10px 0; background-color: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>{color} {row['user_name'] if 'user_name' in row else '匿名用户'}</strong>
+                    <span>👍 {row['like_count'] if 'like_count' in row else 0} | 情感: {row['sentiment_score'] if 'sentiment_score' in row else 'N/A'}</span>
+                </div>
+                <p style="margin: 5px 0;">{row['content_cleaned'] if 'content_cleaned' in row else '无内容'}</p>
+                <small>时间: {row['post_time'] if 'post_time' in row else '未知'}</small>
+            </div>
+            """, unsafe_allow_html=True)
 
     else:
         # 没有上传文件时的展示
@@ -483,16 +582,64 @@ def main():
         st.header("📖 使用说明")
         st.markdown("""
         1. **准备数据**: 确保CSV文件包含以下字段：
-           - `segmented_words`: 分词结果
-           - `sentiment_label`: 情感标签
-           - 其他可选字段
+           - `segmented_words`: 分词结果（最重要！）
+           - `sentiment_label`: 情感标签（积极/消极/中性）
+           - `sentiment_score`: 情感得分（0-1）
+           - `content_cleaned`: 清洗后的评论内容
+           - `like_count`: 点赞数
+           - `user_name`: 用户名
+           - `post_time`: 发布时间
 
         2. **上传文件**: 在左侧边栏上传CSV文件
 
-        3. **上传字体(可选)**: 如果词云不显示文字，可以上传TTF字体文件
+        3. **字体支持**: 如果词云不显示文字，可以在侧边栏上传TTF字体文件
 
-        4. **生成词云**: 选择手动布局模式确保显示文字
+        4. **生成词云**: 选择"手动布局"模式确保文字显示
+
+        5. **探索分析**: 查看各种可视化图表和统计信息
         """)
+
+        # 显示功能预览
+        st.header("🎯 功能预览")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("情感分析")
+            st.markdown("""
+            - 情感分布饼图
+            - 情感得分直方图  
+            - 时间趋势分析
+            - 评论详情浏览
+            """)
+
+        with col2:
+            st.subheader("文本分析")
+            st.markdown("""
+            - 动态词云生成
+            - 高频词汇统计
+            - 情感词汇对比
+            - 多维度筛选
+            """)
+
+        # 技术特性
+        st.header("🛠 技术特性")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+            - **多字体支持**: 自动检测系统字体，支持自定义字体上传
+            - **双模式词云**: 自动词云 + 手动布局确保显示
+            - **实时调试**: 详细的调试信息帮助排查问题
+            - **响应式设计**: 适配不同屏幕尺寸
+            """)
+
+        with col2:
+            st.markdown("""
+            - **数据验证**: 自动检查数据格式和完整性
+            - **错误处理**: 完善的异常处理和备用方案
+            - **交互式图表**: 支持图表交互和缩放
+            - **分页浏览**: 大数据集分页显示
+            """)
 
 if __name__ == "__main__":
     main()
