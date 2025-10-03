@@ -31,7 +31,7 @@ def get_best_font():
         return None
 
 def create_bubble_chart(word_freq, max_words=50, title="词云图"):
-    """创建气泡图替代词云"""
+    """创建气泡图替代词云 - 加大版本"""
     try:
         # 获取前N个词汇
         top_words = word_freq.most_common(max_words)
@@ -44,10 +44,10 @@ def create_bubble_chart(word_freq, max_words=50, title="词云图"):
         # 创建气泡图
         fig = go.Figure()
         
-        # 计算气泡大小
+        # 计算气泡大小 - 加大尺寸
         max_count = max(counts)
         min_count = min(counts)
-        sizes = [10 + 40 * (count - min_count) / (max_count - min_count) for count in counts]
+        sizes = [20 + 80 * (count - min_count) / (max_count - min_count) for count in counts]  # 加大尺寸范围
         
         # 生成随机位置（避免重叠）
         np.random.seed(42)
@@ -62,15 +62,16 @@ def create_bubble_chart(word_freq, max_words=50, title="词云图"):
             text=words,
             textposition="middle center",
             textfont=dict(
-                size=[size/2 for size in sizes],  # 文字大小
-                color='white'
+                size=[size/1.5 for size in sizes],  # 加大文字大小
+                color='white',
+                family="SimHei, Microsoft YaHei, sans-serif"  # 确保中文字体
             ),
             marker=dict(
-                size=sizes,
+                size=sizes,  # 使用计算的大小
                 color=counts,
                 colorscale='Viridis',
-                opacity=0.7,
-                line=dict(width=2, color='white')
+                opacity=0.8,  # 提高不透明度
+                line=dict(width=3, color='white')  # 加粗边框
             ),
             hovertemplate=
             "<b>%{text}</b><br>" +
@@ -82,14 +83,15 @@ def create_bubble_chart(word_freq, max_words=50, title="词云图"):
             title=dict(
                 text=title,
                 x=0.5,
-                font=dict(size=20)
+                font=dict(size=24, family="SimHei, Microsoft YaHei")  # 加大标题字体
             ),
             showlegend=False,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.1, 1.1]),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.1, 1.1]),
             plot_bgcolor='white',
-            height=600,
-            margin=dict(l=20, r=20, t=60, b=20)
+            height=700,  # 增加高度
+            width=1000,   # 增加宽度
+            margin=dict(l=20, r=20, t=80, b=20)
         )
         
         return fig
@@ -707,4 +709,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
