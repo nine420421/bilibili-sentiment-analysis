@@ -19,16 +19,16 @@ def create_advanced_bar_chart(word_freq, title="高频词汇云图"):
     """创建高级条形图"""
     try:
         top_words = word_freq.most_common(30)
-        
+
         if not top_words:
             return None
-            
+
         words = [word for word, _ in top_words]
         counts = [count for _, count in top_words]
-        
+
         # 创建水平条形图，但使用圆形标记
         fig = go.Figure()
-        
+
         fig.add_trace(go.Bar(
             y=words,
             x=counts,
@@ -42,7 +42,7 @@ def create_advanced_bar_chart(word_freq, title="高频词汇云图"):
             textposition='auto',
             hovertemplate='<b>%{y}</b><br>出现次数: %{x}<extra></extra>'
         ))
-        
+
         fig.update_layout(
             title=dict(
                 text=title,
@@ -55,30 +55,31 @@ def create_advanced_bar_chart(word_freq, title="高频词汇云图"):
             height=600,
             yaxis={'categoryorder': 'total ascending'}
         )
-        
+
         return fig
-        
+
     except Exception as e:
         st.error(f"高级条形图失败: {e}")
         return None
+
 
 def create_word_importance_chart(word_freq, title="词汇重要性分布"):
     """创建词汇重要性图表 - 修复版本"""
     try:
         top_words = word_freq.most_common(25)
-        
+
         if not top_words:
             return None
-            
+
         words = [word for word, _ in top_words]
         counts = [count for _, count in top_words]
-        
+
         # 创建散点图显示词汇重要性
         fig = go.Figure()
-        
+
         # 修复：使用列表而不是range对象
         x_values = list(range(len(words)))
-        
+
         fig.add_trace(go.Scatter(
             x=x_values,  # 修复：使用列表
             y=counts,
@@ -86,7 +87,7 @@ def create_word_importance_chart(word_freq, title="词汇重要性分布"):
             text=words,
             textposition="top center",
             marker=dict(
-                size=[count/2 for count in counts],
+                size=[count / 2 for count in counts],
                 color=counts,
                 colorscale='Rainbow',
                 opacity=0.7,
@@ -95,7 +96,7 @@ def create_word_importance_chart(word_freq, title="词汇重要性分布"):
             textfont=dict(size=14),
             hovertemplate='<b>%{text}</b><br>出现次数: %{y}<extra></extra>'
         ))
-        
+
         fig.update_layout(
             title=dict(
                 text=title,
@@ -115,27 +116,28 @@ def create_word_importance_chart(word_freq, title="词汇重要性分布"):
             height=500,
             plot_bgcolor='white'
         )
-        
+
         return fig
-        
+
     except Exception as e:
         st.error(f"词汇重要性图表失败: {e}")
         return None
+
 
 def create_word_frequency_heatmap(word_freq, title="词汇频率热力图"):
     """创建词汇频率热力图"""
     try:
         top_words = word_freq.most_common(20)
-        
+
         if not top_words:
             return None
-            
+
         words = [word for word, _ in top_words]
         counts = [count for _, count in top_words]
-        
+
         # 创建热力图样式的条形图
         fig = go.Figure()
-        
+
         fig.add_trace(go.Bar(
             x=words,
             y=counts,
@@ -148,7 +150,7 @@ def create_word_frequency_heatmap(word_freq, title="词汇频率热力图"):
             textposition='auto',
             hovertemplate='<b>%{x}</b><br>出现次数: %{y}<extra></extra>'
         ))
-        
+
         fig.update_layout(
             title=dict(
                 text=title,
@@ -161,44 +163,45 @@ def create_word_frequency_heatmap(word_freq, title="词汇频率热力图"):
             height=500,
             xaxis={'tickangle': 45}
         )
-        
+
         return fig
-        
+
     except Exception as e:
         st.error(f"热力图创建失败: {e}")
         return None
+
 
 def create_word_network_chart(word_freq, title="词汇网络图"):
     """创建词汇网络图"""
     try:
         top_words = word_freq.most_common(15)
-        
+
         if not top_words:
             return None
-            
+
         words = [word for word, _ in top_words]
         counts = [count for _, count in top_words]
-        
+
         # 创建极坐标图
         fig = go.Figure()
-        
+
         # 计算角度
-        angles = np.linspace(0, 2*np.pi, len(words), endpoint=False).tolist()
-        
+        angles = np.linspace(0, 2 * np.pi, len(words), endpoint=False).tolist()
+
         fig.add_trace(go.Scatterpolar(
             r=counts,
             theta=words,
             fill='toself',
             line=dict(color='blue'),
             marker=dict(
-                size=[count/3 for count in counts],
+                size=[count / 3 for count in counts],
                 color=counts,
                 colorscale='Viridis'
             ),
             text=counts,
             hovertemplate='<b>%{theta}</b><br>出现次数: %{r}<extra></extra>'
         ))
-        
+
         fig.update_layout(
             title=dict(
                 text=title,
@@ -214,57 +217,137 @@ def create_word_network_chart(word_freq, title="词汇网络图"):
             showlegend=False,
             height=500
         )
-        
+
         return fig
-        
+
     except Exception as e:
         st.error(f"网络图创建失败: {e}")
         return None
+
 
 def get_words_from_segmented(segmented_str):
     """从分词字符串中提取词汇"""
     if pd.isna(segmented_str) or not isinstance(segmented_str, str):
         return []
-    
+
     try:
         clean_str = segmented_str.strip()
-        
+
         # 处理列表格式
         if clean_str.startswith('[') and clean_str.endswith(']'):
             content = clean_str[1:-1].replace("'", "").replace('"', '')
             words = [word.strip() for word in content.split(',')]
         else:
             words = clean_str.split()
-        
+
         # 过滤
         filtered_words = []
         for word in words:
             word_clean = word.strip()
-            if (len(word_clean) > 0 and 
-                not word_clean.isspace() and
-                word_clean not in [' ', '', '\\n', '\\t']):
+            if (len(word_clean) > 0 and
+                    not word_clean.isspace() and
+                    word_clean not in [' ', '', '\\n', '\\t']):
                 filtered_words.append(word_clean)
-        
+
         return filtered_words
-        
+
     except Exception as e:
         return []
+
 
 # 设置页面
 st.set_page_config(
     page_title="B站评论情感分析系统",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
+
 def main():
+    # 自定义CSS样式
+    st.markdown("""
+    <style>
+    .main-header {
+        font-size: 3rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-weight: bold;
+    }
+    .feature-card {
+        background-color: #f0f2f6;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 5px solid #1f77b4;
+    }
+    .metric-card {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f8f9fa;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # 标题和介绍
-    st.title("🎯 B站视频评论情感分析系统")
-    st.markdown("---")
+    st.markdown('<h1 class="main-header">🎯 B站视频评论情感分析系统</h1>', unsafe_allow_html=True)
+    
+    # 功能特点展示
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; margin-bottom: 2rem;">
+        <h2 style="color: white; text-align: center;">功能特点</h2>
+        <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+            <div style="text-align: center; margin: 1rem;">
+                <h3>📊 数据可视化</h3>
+                <p>多维度评论数据可视化分析</p>
+            </div>
+            <div style="text-align: center; margin: 1rem;">
+                <h3>🎭 情感分析</h3>
+                <p>智能识别积极/消极/中性评论</p>
+            </div>
+            <div style="text-align: center; margin: 1rem;">
+                <h3>☁️ 词云生成</h3>
+                <p>动态生成高频词汇可视化</p>
+            </div>
+            <div style="text-align: center; margin: 1rem;">
+                <h3>💬 评论浏览</h3>
+                <p>多条件筛选和排序评论</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 技术栈展示
+    st.markdown("""
+    <div class="feature-card">
+        <h3>🛠️ 技术栈</h3>
+        <p><strong>Python • Streamlit • Pandas • Matplotlib • Plotly • Scikit-learn</strong></p>
+        <p>基于先进的自然语言处理技术和现代化的Web框架构建</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # 侧边栏 - 文件上传和设置
     st.sidebar.header("📁 数据上传")
     uploaded_file = st.sidebar.file_uploader("上传评论数据CSV文件", type=['csv'])
+    
+    # 使用说明
+    with st.sidebar.expander("📖 使用说明", expanded=True):
+        st.markdown("""
+        1. **准备数据**: 确保CSV文件包含以下字段：
+           - `segmented_words`: 分词结果
+           - `sentiment_label`: 情感标签
+           - 其他可选字段
+        
+        2. **上传文件**: 在左侧上传CSV文件
+        
+        3. **探索分析**: 查看各种可视化图表和统计信息
+        """)
 
     if uploaded_file is not None:
         # 读取数据
@@ -274,7 +357,7 @@ def main():
         except Exception as e:
             st.error(f"❌ 读取数据失败: {e}")
             return
-        
+
         # 数据预处理
         if 'post_time' in df.columns:
             df['post_time'] = pd.to_datetime(df['post_time'], errors='coerce')
@@ -284,16 +367,24 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("总评论数", len(df))
+            st.markdown('</div>', unsafe_allow_html=True)
         with col2:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             positive_count = len(df[df['sentiment_label'] == '积极'])
             st.metric("积极评论", positive_count)
+            st.markdown('</div>', unsafe_allow_html=True)
         with col3:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             negative_count = len(df[df['sentiment_label'] == '消极'])
             st.metric("消极评论", negative_count)
+            st.markdown('</div>', unsafe_allow_html=True)
         with col4:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             neutral_count = len(df[df['sentiment_label'] == '中性'])
             st.metric("中性评论", neutral_count)
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # 情感分布饼图
         st.header("🎭 情感分布分析")
@@ -325,8 +416,8 @@ def main():
         st.header("📈 评论时间趋势")
         if 'post_time' in df.columns:
             daily_stats = df.groupby(df['post_time'].dt.date).agg({
-                'sentiment_score': 'mean',
-                'comment_id': 'count'
+                'sentiment_score': 'mean',            # 计算情感得分的日均值
+                'comment_id': 'count'                  # 统计每日评论数量
             }).reset_index()
 
             col1, col2 = st.columns(2)
@@ -360,7 +451,7 @@ def main():
         # 可视化方案选择
         viz_option = st.selectbox(
             "选择可视化方案:",
-            [ "高级条形图", "词汇重要性图", "频率热力图", "网络图"],
+            ["高级条形图", "词汇重要性图", "频率热力图", "网络图"],
             help="选择不同的方式来可视化词汇分布"
         )
 
@@ -393,10 +484,10 @@ def main():
                 if all_words:
                     # 统计词频
                     word_freq = Counter(all_words)
-                    
+
                     # 显示统计信息
                     st.success(f"✅ 成功提取 {len(all_words)} 个词汇，{len(word_freq)} 个不同词汇")
-                    
+
                     # 显示前10个高频词
                     top_10 = word_freq.most_common(10)
                     top_words_str = "、".join([f"{word}({count})" for word, count in top_10])
@@ -404,26 +495,25 @@ def main():
 
                     # 根据选择的方案生成图表
                     title_suffix = f"{sentiment_option} - "
-                
-                        
+
                     if viz_option == "高级条形图":
                         fig = create_advanced_bar_chart(
                             word_freq,
                             title=title_suffix + '高频词汇图'
                         )
-                        
+
                     elif viz_option == "词汇重要性图":
                         fig = create_word_importance_chart(
                             word_freq,
                             title=title_suffix + '词汇重要性分布'
                         )
-                        
+
                     elif viz_option == "频率热力图":
                         fig = create_word_frequency_heatmap(
                             word_freq,
                             title=title_suffix + '词汇频率热力图'
                         )
-                        
+
                     elif viz_option == "网络图":
                         fig = create_word_network_chart(
                             word_freq,
@@ -462,7 +552,7 @@ def main():
         if 'like_count' in df.columns:
             min_likes = int(df['like_count'].min())
             max_likes = int(df['like_count'].max())
-            
+
             min_likes, max_likes = st.slider(
                 "点赞数范围:",
                 min_value=min_likes,
@@ -473,12 +563,12 @@ def main():
 
         # 应用筛选
         filtered_df = df[df['sentiment_label'].isin(sentiment_filter)]
-        
+
         if 'like_count' in df.columns:
             filtered_df = filtered_df[
-                (filtered_df['like_count'] >= min_likes) & 
+                (filtered_df['like_count'] >= min_likes) &
                 (filtered_df['like_count'] <= max_likes)
-            ]
+                ]
 
         # 显示筛选后的评论
         st.subheader(f"筛选结果: {len(filtered_df)} 条评论")
@@ -491,7 +581,7 @@ def main():
             sort_options.append("按情感得分降序")
         if 'post_time' in df.columns:
             sort_options.append("按时间降序")
-            
+
         sort_option = st.selectbox("排序方式:", sort_options, key="sort_selector")
 
         if sort_option == "按点赞数降序" and 'like_count' in filtered_df.columns:
@@ -524,7 +614,7 @@ def main():
 
             # 显示评论卡片
             st.markdown(f"""
-            <div style="border-left: 4px solid {border_color}; padding: 10px; margin: 10px 0; background-color: #f8f9fa;">
+            <div style="border-left: 4px solid {border_color}; padding: 10px; margin: 10px 0; background-color: #f8f9fa; border-radius: 5px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <strong>{color} {row['user_name'] if 'user_name' in row else '匿名用户'}</strong>
                     <span>👍 {row['like_count'] if 'like_count' in row else 0} | 情感: {row['sentiment_score'] if 'sentiment_score' in row else 'N/A'}</span>
@@ -538,25 +628,46 @@ def main():
         # 没有上传文件时的展示
         st.info("👆 请在左侧上传B站评论数据CSV文件开始分析")
 
-        # 显示使用说明
-        st.header("📖 使用说明")
+        # 本地运行说明
+        st.header("🚀 本地运行")
         st.markdown("""
-        1. **准备数据**: 确保CSV文件包含以下字段：
-           - `segmented_words`: 分词结果
-           - `sentiment_label`: 情感标签
-           - 其他可选字段
-
-        2. **上传文件**: 在左侧边栏上传CSV文件
-
-        3. **探索分析**: 查看各种可视化图表和统计信息
+        ```bash
+        pip install -r requirements.txt
+        streamlit run app.py
+        ```
         """)
+
+        # 功能演示区域
+        st.header("🎥 功能演示")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            <div style="background-color: #e8f4fd; padding: 1.5rem; border-radius: 10px; height: 200px;">
+                <h3>📈 数据可视化</h3>
+                <p>多种图表展示评论数据分布和趋势</p>
+                <ul>
+                    <li>情感分布饼图</li>
+                    <li>时间趋势分析</li>
+                    <li>词汇频率分析</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("""
+            <div style="background-color: #e8f4fd; padding: 1.5rem; border-radius: 10px; height: 200px;">
+                <h3>🔍 深度分析</h3>
+                <p>多维度探索评论内容</p>
+                <ul>
+                    <li>情感倾向分析</li>
+                    <li>高频词汇提取</li>
+                    <li>评论内容筛选</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
