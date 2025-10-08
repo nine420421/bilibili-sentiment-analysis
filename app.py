@@ -639,31 +639,33 @@ def main():
 
         # 功能演示区域
         st.header("🎥 功能演示")
-        
+
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("""
-            <div style="background-color: #e8f4fd; padding: 1.5rem; border-radius: 10px; height: 200px;">
-                <h3>📈 数据可视化</h3>
-                <p>多种图表展示评论数据分布和趋势</p>
-                <ul>
+            <div style="background-color: #e8f4fd; padding: 2rem; border-radius: 10px; height: 280px; border: 2px solid #1f77b4;">
+                <h3 style="color: #1f77b4; margin-top: 0;">📈 数据可视化</h3>
+                <p style="font-size: 16px; line-height: 1.6;">多种图表展示评论数据分布和趋势</p>
+                <ul style="font-size: 15px; line-height: 1.8;">
                     <li>情感分布饼图</li>
                     <li>时间趋势分析</li>
                     <li>词汇频率分析</li>
+                    <li>多种可视化方案</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
             
         with col2:
             st.markdown("""
-            <div style="background-color: #e8f4fd; padding: 1.5rem; border-radius: 10px; height: 200px;">
-                <h3>🔍 深度分析</h3>
-                <p>多维度探索评论内容</p>
-                <ul>
+            <div style="background-color: #e8f4fd; padding: 2rem; border-radius: 10px; height: 280px; border: 2px solid #1f77b4;">
+                <h3 style="color: #1f77b4; margin-top: 0;">🔍 深度分析</h3>
+                <p style="font-size: 16px; line-height: 1.6;">多维度探索评论内容</p>
+                <ul style="font-size: 15px; line-height: 1.8;">
                     <li>情感倾向分析</li>
                     <li>高频词汇提取</li>
                     <li>评论内容筛选</li>
+                    <li>多条件排序浏览</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
@@ -671,3 +673,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
