@@ -365,59 +365,59 @@ def main():
         # 显示基本信息
         st.header("📊 数据概览")
         col1, col2, col3, col4 = st.columns(4)
-
+        
         with col1:
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            <div style="background: white; 
                         padding: 1.5rem; 
-                        border-radius: 15px; 
+                        border-radius: 10px; 
                         text-align: center;
-                        color: white;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <h3 style="margin: 0; font-size: 16px; opacity: 0.9;">总评论数</h3>
-                <h2 style="margin: 10px 0; font-size: 2.5rem; font-weight: bold;">{}</h2>
+                        border-left: 5px solid #667eea;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <div style="font-size: 14px; color: #666; margin-bottom: 8px;">总评论数</div>
+                <div style="font-size: 2.2rem; font-weight: bold; color: #333;">{}</div>
             </div>
             """.format(len(df)), unsafe_allow_html=True)
         
         with col2:
             positive_count = len(df[df['sentiment_label'] == '积极'])
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #2E8B57 0%, #3CB371 100%); 
+            <div style="background: white; 
                         padding: 1.5rem; 
-                        border-radius: 15px; 
+                        border-radius: 10px; 
                         text-align: center;
-                        color: white;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <h3 style="margin: 0; font-size: 16px; opacity: 0.9;">积极评论</h3>
-                <h2 style="margin: 10px 0; font-size: 2.5rem; font-weight: bold;">{}</h2>
+                        border-left: 5px solid #2E8B57;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <div style="font-size: 14px; color: #666; margin-bottom: 8px;">积极评论</div>
+                <div style="font-size: 2.2rem; font-weight: bold; color: #2E8B57;">{}</div>
             </div>
             """.format(positive_count), unsafe_allow_html=True)
         
         with col3:
             negative_count = len(df[df['sentiment_label'] == '消极'])
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #DC143C 0%, #FF6B6B 100%); 
+            <div style="background: white; 
                         padding: 1.5rem; 
-                        border-radius: 15px; 
+                        border-radius: 10px; 
                         text-align: center;
-                        color: white;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <h3 style="margin: 0; font-size: 16px; opacity: 0.9;">消极评论</h3>
-                <h2 style="margin: 10px 0; font-size: 2.5rem; font-weight: bold;">{}</h2>
+                        border-left: 5px solid #DC143C;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <div style="font-size: 14px; color: #666; margin-bottom: 8px;">消极评论</div>
+                <div style="font-size: 2.2rem; font-weight: bold; color: #DC143C;">{}</div>
             </div>
             """.format(negative_count), unsafe_allow_html=True)
         
         with col4:
             neutral_count = len(df[df['sentiment_label'] == '中性'])
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #1E90FF 0%, #87CEEB 100%); 
+            <div style="background: white; 
                         padding: 1.5rem; 
-                        border-radius: 15px; 
+                        border-radius: 10px; 
                         text-align: center;
-                        color: white;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <h3 style="margin: 0; font-size: 16px; opacity: 0.9;">中性评论</h3>
-                <h2 style="margin: 10px 0; font-size: 2.5rem; font-weight: bold;">{}</h2>
+                        border-left: 5px solid #1E90FF;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                <div style="font-size: 14px; color: #666; margin-bottom: 8px;">中性评论</div>
+                <div style="font-size: 2.2rem; font-weight: bold; color: #1E90FF;">{}</div>
             </div>
             """.format(neutral_count), unsafe_allow_html=True)
 
@@ -708,6 +708,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
