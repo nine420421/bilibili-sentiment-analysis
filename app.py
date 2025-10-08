@@ -14,84 +14,6 @@ import matplotlib.font_manager as fm
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
-def get_best_font():
-    """获取最佳字体"""
-    try:
-        # 查找中文字体
-        chinese_fonts = []
-        for font in fm.fontManager.ttflist:
-            font_name = font.name.lower()
-            if any(keyword in font_name for keyword in ['simhei', 'microsoft', 'pingfang', 'heiti', 'stsong']):
-                chinese_fonts.append(font.fname)
-        
-        if chinese_fonts:
-            return chinese_fonts[0]
-        return None
-    except:
-        return None
-
-def create_text_cloud_matplotlib(word_freq, max_words=50, colormap='viridis', background_color='white'):
-    """使用matplotlib创建文本云"""
-    try:
-        # 获取词汇
-        top_words = word_freq.most_common(max_words)
-        if not top_words:
-            return None
-            
-        words = [word for word, count in top_words]
-        counts = [count for word, count in top_words]
-        
-        # 创建图形
-        fig, ax = plt.subplots(figsize=(16, 9), dpi=100)
-        
-        # 设置背景
-        fig.patch.set_facecolor(background_color)
-        ax.set_facecolor(background_color)
-        
-        # 计算字体大小
-        max_count = max(counts)
-        min_count = min(counts)
-        
-        # 获取颜色映射
-        cmap = plt.cm.get_cmap(colormap)
-        
-        # 生成位置
-        np.random.seed(42)
-        
-        # 绘制每个词汇
-        for i, (word, count) in enumerate(zip(words, counts)):
-            # 计算字体大小
-            if max_count == min_count:
-                fontsize = 30
-            else:
-                fontsize = 15 + 35 * (count - min_count) / (max_count - min_count)
-            
-            # 随机位置（在中心区域）
-            x = np.random.uniform(0.1, 0.9)
-            y = np.random.uniform(0.1, 0.9)
-            
-            # 计算颜色
-            color = cmap(i / len(words))
-            
-            # 绘制文字
-            ax.text(x, y, word, 
-                   fontsize=fontsize,
-                   ha='center', va='center',
-                   color=color,
-                   alpha=0.8,
-                   transform=ax.transAxes,
-                   fontproperties=fm.FontProperties(fname=get_best_font()) if get_best_font() else None)
-        
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.axis('off')
-        ax.set_title('词云图 - 随机布局', fontsize=20, pad=20)
-        
-        return fig
-        
-    except Exception as e:
-        st.error(f"Matplotlib文本云失败: {e}")
-        return None
 
 def create_advanced_bar_chart(word_freq, title="高频词汇云图"):
     """创建高级条形图"""
@@ -631,6 +553,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
