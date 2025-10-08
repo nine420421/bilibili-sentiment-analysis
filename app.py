@@ -259,18 +259,95 @@ def get_words_from_segmented(segmented_str):
 st.set_page_config(
     page_title="B站评论情感分析系统",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
 def main():
+    # 自定义CSS样式
+    st.markdown("""
+    <style>
+    .main-header {
+        font-size: 3rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-weight: bold;
+    }
+    .feature-card {
+        background-color: #f0f2f6;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 5px solid #1f77b4;
+    }
+    .metric-card {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f8f9fa;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # 标题和介绍
-    st.title("🎯 B站视频评论情感分析系统")
-    st.markdown("---")
+    st.markdown('<h1 class="main-header">🎯 B站视频评论情感分析系统</h1>', unsafe_allow_html=True)
+    
+    # 功能特点展示
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; margin-bottom: 2rem;">
+        <h2 style="color: white; text-align: center;">功能特点</h2>
+        <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+            <div style="text-align: center; margin: 1rem;">
+                <h3>📊 数据可视化</h3>
+                <p>多维度评论数据可视化分析</p>
+            </div>
+            <div style="text-align: center; margin: 1rem;">
+                <h3>🎭 情感分析</h3>
+                <p>智能识别积极/消极/中性评论</p>
+            </div>
+            <div style="text-align: center; margin: 1rem;">
+                <h3>☁️ 词云生成</h3>
+                <p>动态生成高频词汇可视化</p>
+            </div>
+            <div style="text-align: center; margin: 1rem;">
+                <h3>💬 评论浏览</h3>
+                <p>多条件筛选和排序评论</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 技术栈展示
+    st.markdown("""
+    <div class="feature-card">
+        <h3>🛠️ 技术栈</h3>
+        <p><strong>Python • Streamlit • Pandas • Matplotlib • Plotly • Scikit-learn</strong></p>
+        <p>基于先进的自然语言处理技术和现代化的Web框架构建</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # 侧边栏 - 文件上传和设置
     st.sidebar.header("📁 数据上传")
     uploaded_file = st.sidebar.file_uploader("上传评论数据CSV文件", type=['csv'])
+    
+    # 使用说明
+    with st.sidebar.expander("📖 使用说明", expanded=True):
+        st.markdown("""
+        1. **准备数据**: 确保CSV文件包含以下字段：
+           - `segmented_words`: 分词结果
+           - `sentiment_label`: 情感标签
+           - 其他可选字段
+        
+        2. **上传文件**: 在左侧上传CSV文件
+        
+        3. **探索分析**: 查看各种可视化图表和统计信息
+        """)
 
     if uploaded_file is not None:
         # 读取数据
@@ -290,16 +367,24 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric("总评论数", len(df))
+            st.markdown('</div>', unsafe_allow_html=True)
         with col2:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             positive_count = len(df[df['sentiment_label'] == '积极'])
             st.metric("积极评论", positive_count)
+            st.markdown('</div>', unsafe_allow_html=True)
         with col3:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             negative_count = len(df[df['sentiment_label'] == '消极'])
             st.metric("消极评论", negative_count)
+            st.markdown('</div>', unsafe_allow_html=True)
         with col4:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             neutral_count = len(df[df['sentiment_label'] == '中性'])
             st.metric("中性评论", neutral_count)
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # 情感分布饼图
         st.header("🎭 情感分布分析")
@@ -529,7 +614,7 @@ def main():
 
             # 显示评论卡片
             st.markdown(f"""
-            <div style="border-left: 4px solid {border_color}; padding: 10px; margin: 10px 0; background-color: #f8f9fa;">
+            <div style="border-left: 4px solid {border_color}; padding: 10px; margin: 10px 0; background-color: #f8f9fa; border-radius: 5px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <strong>{color} {row['user_name'] if 'user_name' in row else '匿名用户'}</strong>
                     <span>👍 {row['like_count'] if 'like_count' in row else 0} | 情感: {row['sentiment_score'] if 'sentiment_score' in row else 'N/A'}</span>
@@ -543,18 +628,45 @@ def main():
         # 没有上传文件时的展示
         st.info("👆 请在左侧上传B站评论数据CSV文件开始分析")
 
-        # 显示使用说明
-        st.header("📖 使用说明")
+        # 本地运行说明
+        st.header("🚀 本地运行")
         st.markdown("""
-        1. **准备数据**: 确保CSV文件包含以下字段：
-           - `segmented_words`: 分词结果
-           - `sentiment_label`: 情感标签
-           - 其他可选字段
-
-        2. **上传文件**: 在左侧边栏上传CSV文件
-
-        3. **探索分析**: 查看各种可视化图表和统计信息
+        ```bash
+        pip install -r requirements.txt
+        streamlit run app.py
+        ```
         """)
+
+        # 功能演示区域
+        st.header("🎥 功能演示")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            <div style="background-color: #e8f4fd; padding: 1.5rem; border-radius: 10px; height: 200px;">
+                <h3>📈 数据可视化</h3>
+                <p>多种图表展示评论数据分布和趋势</p>
+                <ul>
+                    <li>情感分布饼图</li>
+                    <li>时间趋势分析</li>
+                    <li>词汇频率分析</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("""
+            <div style="background-color: #e8f4fd; padding: 1.5rem; border-radius: 10px; height: 200px;">
+                <h3>🔍 深度分析</h3>
+                <p>多维度探索评论内容</p>
+                <ul>
+                    <li>情感倾向分析</li>
+                    <li>高频词汇提取</li>
+                    <li>评论内容筛选</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
